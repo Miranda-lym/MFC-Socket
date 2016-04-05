@@ -1,4 +1,4 @@
 ## MFC-Socket
 ####a socket project by mfc 
 
-__寮�鍙戝钩鍙癬_: vs2013
+__开发平台__: vs2013、MFC
