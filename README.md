@@ -1,4 +1,4 @@
-## MFC-Socket
+ï»¿## MFC-Socket
 ####a socket project by mfc 
 
-__¿ª·¢Æ½Ì¨__: vs2013¡¢MFC
+__å¼€å‘å¹³å°__: vs2013ã€MFC
