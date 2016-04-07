@@ -6,6 +6,7 @@
 #include "MFCQQClient.h"
 #include "MFCQQClientDlg.h"
 #include "afxdialogex.h"
+#include "LoginDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -68,6 +69,11 @@ void CMFCQQClientDlg::DoDataExchange(CDataExchange* pDX)
 
 void CMFCQQClientDlg::receData()
 {
+    char buffer[10000];
+    if (pSock->Receive(buffer, sizeof(buffer)) != SOCKET_ERROR) {
+        m_receive += CString("\r\n") + buffer;
+        UpdateData(false);
+    }
 }
 
 BEGIN_MESSAGE_MAP(CMFCQQClientDlg, CDialogEx)
@@ -109,6 +115,12 @@ BOOL CMFCQQClientDlg::OnInitDialog()
     SetIcon(m_hIcon, FALSE);		// 设置小图标
 
     // TODO: 在此添加额外的初始化代码
+    LoginDlg dlg;
+    if (dlg.DoModal() != IDOK) {
+        exit(1);
+    }
+    userName = dlg.userName;
+    pwd = dlg.pwd;
     connectServer();
 
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -178,6 +190,8 @@ void CMFCQQClientDlg::connectServer()
         MessageBox("连接服务器失败！" + str, "提示", MB_ICONERROR);
         exit(1);
     }
+    CString dataToSend = msg.join("", TYPE[Login], userName, "", "", pwd);
+    pSock->Send(dataToSend, dataToSend.GetLength() + 1);
     m_connected = true;
     m_receive += "\r\n已连上服务器";
     UpdateData(false);
@@ -201,7 +215,8 @@ void CMFCQQClientDlg::OnBnClickedSendMessage()
             MessageBox("请输入要发送的消息", "温馨提示");
             return;
         }
-        if(pSock->Send(m_send,m_send.GetLength())==SOCKET_ERROR)
+        CString dataToSend = msg.join(m_send, TYPE[ChatMsg], "wb", "", "lym");
+        if(pSock->Send(dataToSend, dataToSend.GetLength()+1)==SOCKET_ERROR)
         {
             MessageBox("发送失败", "温馨提示");
         }
@@ -219,6 +234,6 @@ void CMFCQQClientDlg::OnBnClickedSendMessage()
 void CMFCQQClientDlg::OnOK()
 {
     // TODO: 在此添加专用代码和/或调用基类
-
+    OnBnClickedSendMessage();
     //CDialogEx::OnOK();
 }

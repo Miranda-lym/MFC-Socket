@@ -190,16 +190,21 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ClientSocket.h" />
+    <ClInclude Include="LoginDlg.h" />
     <ClInclude Include="MFCQQClient.h" />
     <ClInclude Include="MFCQQClientDlg.h" />
+    <ClInclude Include="MyMsg.h" />
+    <ClInclude Include="MyType.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ClientSocket.cpp" />
+    <ClCompile Include="LoginDlg.cpp" />
     <ClCompile Include="MFCQQClient.cpp" />
     <ClCompile Include="MFCQQClientDlg.cpp" />
+    <ClCompile Include="MyMsg.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

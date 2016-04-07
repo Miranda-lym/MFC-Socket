@@ -36,6 +36,12 @@
     <ClInclude Include="ServerSocket.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\MFCQQClient\MFCQQClient\MyType.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\MFCQQClient\MFCQQClient\MyMsg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MFCQQServer.cpp">
@@ -48,6 +54,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="ServerSocket.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\MFCQQClient\MFCQQClient\MyMsg.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

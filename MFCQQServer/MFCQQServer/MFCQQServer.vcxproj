@@ -146,6 +146,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -189,6 +190,8 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\MFCQQClient\MFCQQClient\MyMsg.h" />
+    <ClInclude Include="..\..\MFCQQClient\MFCQQClient\MyType.h" />
     <ClInclude Include="MFCQQServer.h" />
     <ClInclude Include="MFCQQServerDlg.h" />
     <ClInclude Include="Resource.h" />
@@ -197,6 +200,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\MFCQQClient\MFCQQClient\MyMsg.cpp" />
     <ClCompile Include="MFCQQServer.cpp" />
     <ClCompile Include="MFCQQServerDlg.cpp" />
     <ClCompile Include="ServerSocket.cpp" />

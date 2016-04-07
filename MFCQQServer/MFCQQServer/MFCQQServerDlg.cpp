@@ -51,15 +51,39 @@ END_MESSAGE_MAP()
 
 CMFCQQServerDlg::CMFCQQServerDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_MFCQQSERVER_DIALOG, pParent)
+    , sendData(_T(""))
+    , m_receiveData(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
     listenSocket = NULL;
+    lastClientSocket = NULL;
     m_port = 22783;
+    conn = mysql_init(0);
+    if (mysql_real_connect(conn, "localhost", "root", "123456", "test", 0, 0, 0) != 0) {
+        mysql_query(conn, "set name 'GBK'");
+        if (mysql_query(conn, "select userName,passwd from UserInfo") == 0) {
+            MYSQL_RES *res = mysql_store_result(conn);
+            MYSQL_ROW row;
+            userList = "";
+            while ((row = mysql_fetch_row(res)) != NULL) {
+                userInfoMap[row[0]] = row[1];
+                userList += row[0] + (CString)";";
+            }
+            mysql_free_result(res);
+        }else
+            MessageBox(mysql_error(conn), "Error on MySQL:", MB_ICONERROR);
+    }
+    else {
+        MessageBox(mysql_error(conn), "Error on MySQL:", MB_ICONERROR);
+        exit(1);
+    }
 }
 
 void CMFCQQServerDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
+    CDialogEx::DoDataExchange(pDX);
+    DDX_Text(pDX, IDC_SendData, sendData);
+    DDX_Text(pDX, IDC_RECE_DATA, m_receiveData);
 }
 
 void CMFCQQServerDlg::addClient()
@@ -67,11 +91,31 @@ void CMFCQQServerDlg::addClient()
     ServerSocket* pSocket = new ServerSocket(this);
     listenSocket->Accept(*pSocket);
     pSocket->AsyncSelect(FD_READ | FD_WRITE | FD_CLOSE);
-    pSocket->Send("w |  |  |  | UserList | 萌萌; 波波; ", 70);
+    pSocket->Send(userList, 70);
+    lastClientSocket = pSocket;
 }
 
 void CMFCQQServerDlg::receData()
 {
+    char buffer[10000];
+    if (lastClientSocket->Receive(buffer, sizeof(buffer)) != SOCKET_ERROR) {
+        msg.load(buffer);
+        if (msg.type == TYPE[Login]) {
+            if(isUserInfoValid(msg.userId,msg.pw)){}
+
+        }
+
+        //m_receiveData += CString("\r\n") + buffer;
+        UpdateData(false);
+    }
+}
+
+bool CMFCQQServerDlg::isUserInfoValid(const CString & user, const CString & pwd)
+{
+    auto i = userInfoMap.find(user);
+    if (i != userInfoMap.end())
+        return userInfoMap[user] == pwd;
+    return false;
 }
 
 BEGIN_MESSAGE_MAP(CMFCQQServerDlg, CDialogEx)
@@ -79,6 +123,7 @@ BEGIN_MESSAGE_MAP(CMFCQQServerDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
     ON_BN_CLICKED(ID_OpenServer, &CMFCQQServerDlg::OnBnClickedOpenserver)
+    ON_BN_CLICKED(IDC_SendMsg, &CMFCQQServerDlg::OnBnClickedSendMsg)
 END_MESSAGE_MAP()
 
 
@@ -114,7 +159,7 @@ BOOL CMFCQQServerDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
-
+    OnBnClickedOpenserver();
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -175,15 +220,37 @@ void CMFCQQServerDlg::OnBnClickedOpenserver()
         delete listenSocket;
         listenSocket = NULL;
     }
+    static bool firstOpen = 1;
     listenSocket = new ServerSocket(this);
     if (!listenSocket->Create(m_port, SOCK_STREAM)) {
-        MessageBox("创建套接字失败", "温馨提示");
+        if(!firstOpen){
+            MessageBox("创建套接字失败", "温馨提示");
+        }
+        firstOpen = 0;
         return;
     }
     if (listenSocket->Listen(UserNumMax)) {
         GetDlgItem(ID_OpenServer)->EnableWindow(0);
-        MessageBox("开启成功", "温馨提示");
+        if (!firstOpen)
+            MessageBox("开启成功", "温馨提示");
+        else
+            firstOpen = 0;
     }else
-        MessageBox("开启失败，请重试", "温馨提示");
+        if (!firstOpen)
+            MessageBox("开启失败，请重试", "温馨提示");
+        else
+            firstOpen = 0;
+}
 
+
+void CMFCQQServerDlg::OnBnClickedSendMsg()
+{
+    // TODO: 在此添加控件通知处理程序代码
+    UpdateData(true);
+    if (sendData == "") {
+        MessageBox("请先输入消息", "温馨提示");
+        return;
+    }
+    lastClientSocket->Send(sendData, sendData.GetLength()+1);
+    
 }

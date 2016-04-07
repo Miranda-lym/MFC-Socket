@@ -4,6 +4,9 @@
 
 #pragma once
 #include"ServerSocket.h"
+#include "../../MFCQQClient/MFCQQClient/MyMsg.h"
+#include"mysql.h"
+#include<map>
 
 
 // CMFCQQServerDlg 对话框
@@ -23,11 +26,16 @@ protected:
 public:
     void addClient();
     void receData();
+    bool isUserInfoValid(const CString & user,const CString & pwd);
 private:
     ServerSocket* listenSocket;
+    ServerSocket* lastClientSocket;
     UINT m_port; //端口号
     static const int UserNumMax = 100; //最大监听用户量
-
+    MyMsg msg;
+    MYSQL *conn;
+    std::map<CString, CString> userInfoMap; //（用户名，密码）映射表
+    CString userList; //用户列表，包含所有用户名，用户登录时发送过去
 // 实现
 protected:
 	HICON m_hIcon;
@@ -40,4 +48,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
     afx_msg void OnBnClickedOpenserver();
+    CString sendData;
+    afx_msg void OnBnClickedSendMsg();
+    CString m_receiveData;
 };

@@ -37,6 +37,7 @@
 #include <afxsock.h>            // MFC Ì×½Ó×ÖÀ©Õ¹
 
 
+#include "MyType.h"
 
 
 

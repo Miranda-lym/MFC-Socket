@@ -4,12 +4,16 @@
 
 #pragma once
 #include "ClientSocket.h"
+#include "MyMsg.h"
 
 // CMFCQQClientDlg 对话框
 class CMFCQQClientDlg : public CDialogEx
 {
     ClientSocket* pSock;
     bool m_connected; //标记是否已连接
+    MyMsg msg;
+    CString userName;
+    CString pwd;
 // 构造
 public:
 	CMFCQQClientDlg(CWnd* pParent = NULL);	// 标准构造函数
