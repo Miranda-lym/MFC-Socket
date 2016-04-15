@@ -5,6 +5,7 @@
 #pragma once
 #include "ClientSocket.h"
 #include "MyMsg.h"
+#include "LoginDlg.h"
 
 // CMFCQQClientDlg 对话框
 class CMFCQQClientDlg : public CDialogEx
@@ -14,10 +15,11 @@ class CMFCQQClientDlg : public CDialogEx
     MyMsg msg;
     CString userName;
     CString pwd;
+    LoginDlg login;
 // 构造
 public:
 	CMFCQQClientDlg(CWnd* pParent = NULL);	// 标准构造函数
-
+    ~CMFCQQClientDlg();
 // 对话框数据
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_MFCQQCLIENT_DIALOG };
@@ -27,7 +29,8 @@ public:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 public:
     void receData();
-
+    void showLoginDlg();
+    friend void LoginDlg::OnBnClickedOk();
 // 实现
 protected:
 	HICON m_hIcon;
@@ -37,7 +40,6 @@ protected:
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
-    void connectServer();
 	DECLARE_MESSAGE_MAP()
 public:
     afx_msg void OnBnClickedConnectserver();
@@ -45,4 +47,5 @@ public:
     CString m_send;
     afx_msg void OnBnClickedSendMessage();
     virtual void OnOK();
+    afx_msg void OnTimer(UINT_PTR nIDEvent);
 };

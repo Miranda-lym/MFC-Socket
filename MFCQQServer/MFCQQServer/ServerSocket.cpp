@@ -19,6 +19,6 @@ void ServerSocket::OnAccept(int nErrorCode)
 void ServerSocket::OnReceive(int nErrorCode)
 {
     // TODO: 在此添加专用代码和/或调用基类
-    pDlg->receData();
+    pDlg->receData(this);
     CSocket::OnReceive(nErrorCode);
 }

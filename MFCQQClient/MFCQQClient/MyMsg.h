@@ -12,9 +12,9 @@ class MyMsg
 public:
     CString userId; //用户名
     CString pw; //密码
-    CString type; //消息类型
     CString fromUser; //消息来自
     CString toUser; //消息去向
+    CString type; //消息类型
     CString data; //消息内容
 
     explicit MyMsg(CString str = "");

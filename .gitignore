@@ -1,0 +1,10 @@
+*.o
+*.exe
+*.aps
+*.suo
+*.user
+*.aps
+
+Debug
+Release
+.vs

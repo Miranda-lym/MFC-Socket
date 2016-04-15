@@ -6,6 +6,7 @@
 #include "MFCQQServer.h"
 #include "MFCQQServerDlg.h"
 #include "afxdialogex.h"
+#include "tlhelp32.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -46,7 +47,15 @@ END_MESSAGE_MAP()
 
 
 // CMFCQQServerDlg 对话框
-
+bool findProcessByName(const CString &name) {
+    PROCESSENTRY32 pe32 = { sizeof(pe32) };
+    HANDLE hp = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    for (BOOL find = Process32First(hp, &pe32); find != 0; find = Process32Next(hp, &pe32)) {
+        if (name == pe32.szExeFile)
+            return true;
+    }
+    return false;//整个结束了还没有返回，即代表未找到该进程，所以返回false
+}
 
 
 CMFCQQServerDlg::CMFCQQServerDlg(CWnd* pParent /*=NULL*/)
@@ -56,11 +65,13 @@ CMFCQQServerDlg::CMFCQQServerDlg(CWnd* pParent /*=NULL*/)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
     listenSocket = NULL;
-    lastClientSocket = NULL;
     m_port = 22783;
+    if (!findProcessByName("mysqld.exe")) {
+        ShellExecute(0, "open", "mysqld", 0, 0, SW_HIDE);
+    }
     conn = mysql_init(0);
     if (mysql_real_connect(conn, "localhost", "root", "123456", "test", 0, 0, 0) != 0) {
-        mysql_query(conn, "set name 'GBK'");
+        mysql_query(conn, "set names 'GBK'");
         if (mysql_query(conn, "select userName,passwd from UserInfo") == 0) {
             MYSQL_RES *res = mysql_store_result(conn);
             MYSQL_ROW row;
@@ -91,31 +102,68 @@ void CMFCQQServerDlg::addClient()
     ServerSocket* pSocket = new ServerSocket(this);
     listenSocket->Accept(*pSocket);
     pSocket->AsyncSelect(FD_READ | FD_WRITE | FD_CLOSE);
-    pSocket->Send(userList, 70);
-    lastClientSocket = pSocket;
 }
 
-void CMFCQQServerDlg::receData()
+void CMFCQQServerDlg::receData(ServerSocket* sock)
 {
     char buffer[10000];
-    if (lastClientSocket->Receive(buffer, sizeof(buffer)) != SOCKET_ERROR) {
+    if (sock->Receive(buffer, sizeof(buffer)) != SOCKET_ERROR) {
         msg.load(buffer);
         if (msg.type == TYPE[Login]) {
-            if(isUserInfoValid(msg.userId,msg.pw)){}
-
+            if(isUserInfoValid(msg.userId,msg.pw)){
+                CString dataToSend = msg.join(userList, TYPE[UserList], msg.userId);
+                //MessageBox(userList, "发送");
+                sendMsg(dataToSend, sock);
+                userSockMap[msg.userId] = sock;
+                m_receiveData += msg.userId + "已上线" + "\r\n";//msg.userId就是CString类型，所以不需要在“”加强制类型转换
+            }
+            else {
+                CString dataToSend = msg.join("", TYPE[LoginFail], msg.userId);
+                //MessageBox(dataToSend, "发送");
+                sendMsg(dataToSend, sock);
+            }
         }
-
-        //m_receiveData += CString("\r\n") + buffer;
+        else if (msg.type == TYPE[Logout]) {
+            auto it = userSockMap.find(msg.userId);
+            if (it != userSockMap.end()) {
+                userSockMap[msg.userId]->Close();
+                delete userSockMap[msg.userId];
+                userSockMap.erase(it);
+                m_receiveData += msg.userId + "已下线" + "\r\n";
+            }
+        }
+        else if (msg.type == TYPE[ChatMsg]) {
+            if (msg.toUser == "服务器") {
+                m_receiveData += msg.userId + ": " + msg.data + "\r\n";
+            }
+            else {
+                auto it = userSockMap.find(msg.toUser);
+                if (it != userSockMap.end()) {
+                    CString dataToSend=msg.join(msg.data,TYPE[ChatMsg],msg.toUser,msg.userId);
+                    sendMsg(dataToSend, userSockMap[msg.toUser]);
+                    m_receiveData += msg.userId + "给" + msg.toUser + ": " + msg.data+"\r\n";
+                }
+            }
+        }
+        else {
+            m_receiveData += buffer + CString("\r\n");
+        }
         UpdateData(false);
     }
 }
 
 bool CMFCQQServerDlg::isUserInfoValid(const CString & user, const CString & pwd)
 {
+    //std::map<CString, CString>::iterator i = userInfoMap.find(user);
     auto i = userInfoMap.find(user);
     if (i != userInfoMap.end())
         return userInfoMap[user] == pwd;
     return false;
+}
+
+void CMFCQQServerDlg::sendMsg(const CString & data, ServerSocket * sock)
+{
+    sock->Send(data, data.GetLength() + 1);
 }
 
 BEGIN_MESSAGE_MAP(CMFCQQServerDlg, CDialogEx)
@@ -251,6 +299,6 @@ void CMFCQQServerDlg::OnBnClickedSendMsg()
         MessageBox("请先输入消息", "温馨提示");
         return;
     }
-    lastClientSocket->Send(sendData, sendData.GetLength()+1);
+    //lastClientSocket->Send(sendData, sendData.GetLength()+1);
     
 }
