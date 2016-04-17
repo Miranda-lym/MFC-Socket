@@ -18,19 +18,21 @@
 class CAboutDlg : public CDialogEx
 {
 public:
-	CAboutDlg();
+    CAboutDlg();
 
-// 对话框数据
+    // 对话框数据
 #ifdef AFX_DESIGN_TIME
-	enum { IDD = IDD_ABOUTBOX };
+    enum {
+        IDD = IDD_ABOUTBOX
+    };
 #endif
 
-	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
+protected:
+    virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
 // 实现
 protected:
-	DECLARE_MESSAGE_MAP()
+    DECLARE_MESSAGE_MAP()
 };
 
 CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
@@ -39,7 +41,7 @@ CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
 
 void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
+    CDialogEx::DoDataExchange(pDX);
 }
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
@@ -59,11 +61,11 @@ bool findProcessByName(const CString &name) {
 
 
 CMFCQQServerDlg::CMFCQQServerDlg(CWnd* pParent /*=NULL*/)
-	: CDialogEx(IDD_MFCQQSERVER_DIALOG, pParent)
+    : CDialogEx(IDD_MFCQQSERVER_DIALOG, pParent)
     , sendData(_T(""))
     , m_receiveData(_T(""))
 {
-	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+    m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
     listenSocket = NULL;
     m_port = 22783;
     if (!findProcessByName("mysqld.exe")) {
@@ -81,7 +83,8 @@ CMFCQQServerDlg::CMFCQQServerDlg(CWnd* pParent /*=NULL*/)
                 userList += row[0] + (CString)";";
             }
             mysql_free_result(res);
-        }else
+        }
+        else
             MessageBox(mysql_error(conn), "Error on MySQL:", MB_ICONERROR);
     }
     else {
@@ -110,16 +113,14 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
     if (sock->Receive(buffer, sizeof(buffer)) != SOCKET_ERROR) {
         msg.load(buffer);
         if (msg.type == TYPE[Login]) {
-            if(isUserInfoValid(msg.userId,msg.pw)){
+            if (isUserInfoValid(msg.userId, msg.pw)) {
                 CString dataToSend = msg.join(userList, TYPE[UserList], msg.userId);
-                //MessageBox(userList, "发送");
                 sendMsg(dataToSend, sock);
                 userSockMap[msg.userId] = sock;
-                m_receiveData += msg.userId + "已上线" + "\r\n";//msg.userId就是CString类型，所以不需要在“”加强制类型转换
+                updateEvent(msg.userId + "已上线", "");
             }
             else {
                 CString dataToSend = msg.join("", TYPE[LoginFail], msg.userId);
-                //MessageBox(dataToSend, "发送");
                 sendMsg(dataToSend, sock);
             }
         }
@@ -129,24 +130,29 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                 userSockMap[msg.userId]->Close();
                 delete userSockMap[msg.userId];
                 userSockMap.erase(it);
-                m_receiveData += msg.userId + "已下线" + "\r\n";
+                updateEvent(msg.userId + "已下线", "");
             }
         }
         else if (msg.type == TYPE[ChatMsg]) {
             if (msg.toUser == "服务器") {
-                m_receiveData += msg.userId + ": " + msg.data + "\r\n";
+                updateEvent(msg.userId, msg.data);
             }
             else {
                 auto it = userSockMap.find(msg.toUser);
                 if (it != userSockMap.end()) {
-                    CString dataToSend=msg.join(msg.data,TYPE[ChatMsg],msg.toUser,msg.userId);
+                    CString dataToSend = msg.join(msg.data, TYPE[ChatMsg], msg.toUser, msg.userId); //发送的内容 消息类型 消息发给谁 发送者是谁
                     sendMsg(dataToSend, userSockMap[msg.toUser]);
-                    m_receiveData += msg.userId + "给" + msg.toUser + ": " + msg.data+"\r\n";
+                    updateEvent(msg.userId + "给" + msg.toUser, msg.data);
+                }
+                else {
+                    CString dataToSend = msg.join(msg.toUser + "不在线,请稍后重试", TYPE[ChatMsg], msg.userId, "服务器");
+                    sendMsg(dataToSend, userSockMap[msg.userId]);
+                    updateEvent(msg.userId + "给" + msg.toUser, msg.data + "（发送失败，该用户暂不在线！）");
                 }
             }
         }
         else {
-            m_receiveData += buffer + CString("\r\n");
+            updateEvent("未知消息", buffer);
         }
         UpdateData(false);
     }
@@ -163,13 +169,32 @@ bool CMFCQQServerDlg::isUserInfoValid(const CString & user, const CString & pwd)
 
 void CMFCQQServerDlg::sendMsg(const CString & data, ServerSocket * sock)
 {
-    sock->Send(data, data.GetLength() + 1);
+    if (sock->Send(data, data.GetLength() + 1) != SOCKET_ERROR) { //即发送成功
+        sendData = "";
+        UpdateData(false);
+    }
+}
+
+void CMFCQQServerDlg::updateEvent(const CString & title, const CString & content)
+{
+    CString str;
+    if (content == "") {
+        str = title + "\r\n";
+    }
+    else {
+        str = title + ": " + content + "\r\n";
+    }
+    m_receiveData += str;
+    CEdit* pEvent = (CEdit*)GetDlgItem(IDC_RECE_DATA); //获取到界面中一个控件，控件ID由我们自己写
+    int lastLine = pEvent->LineIndex(pEvent->GetLineCount() - 1); //获取编辑框最后一行索引，该函数的参数必须是有效的索引值（下标），如有5行则有效的下标是0~4
+    pEvent->SetSel(lastLine + 1, lastLine + 2, 0); //选择编辑框最后一行
+    pEvent->ReplaceSel(str); //替换所选那一行的内容，本来下一行是没有内容的
 }
 
 BEGIN_MESSAGE_MAP(CMFCQQServerDlg, CDialogEx)
-	ON_WM_SYSCOMMAND()
-	ON_WM_PAINT()
-	ON_WM_QUERYDRAGICON()
+    ON_WM_SYSCOMMAND()
+    ON_WM_PAINT()
+    ON_WM_QUERYDRAGICON()
     ON_BN_CLICKED(ID_OpenServer, &CMFCQQServerDlg::OnBnClickedOpenserver)
     ON_BN_CLICKED(IDC_SendMsg, &CMFCQQServerDlg::OnBnClickedSendMsg)
 END_MESSAGE_MAP()
@@ -179,49 +204,45 @@ END_MESSAGE_MAP()
 
 BOOL CMFCQQServerDlg::OnInitDialog()
 {
-	CDialogEx::OnInitDialog();
+    CDialogEx::OnInitDialog();
 
-	// 将“关于...”菜单项添加到系统菜单中。
+    // 将“关于...”菜单项添加到系统菜单中。
 
-	// IDM_ABOUTBOX 必须在系统命令范围内。
-	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
-	ASSERT(IDM_ABOUTBOX < 0xF000);
+    // IDM_ABOUTBOX 必须在系统命令范围内。
+    ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
+    ASSERT(IDM_ABOUTBOX < 0xF000);
 
-	CMenu* pSysMenu = GetSystemMenu(FALSE);
-	if (pSysMenu != NULL)
-	{
-		BOOL bNameValid;
-		CString strAboutMenu;
-		bNameValid = strAboutMenu.LoadString(IDS_ABOUTBOX);
-		ASSERT(bNameValid);
-		if (!strAboutMenu.IsEmpty())
-		{
-			pSysMenu->AppendMenu(MF_SEPARATOR);
-			pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
-		}
-	}
+    CMenu* pSysMenu = GetSystemMenu(FALSE);
+    if (pSysMenu != NULL) {
+        BOOL bNameValid;
+        CString strAboutMenu;
+        bNameValid = strAboutMenu.LoadString(IDS_ABOUTBOX);
+        ASSERT(bNameValid);
+        if (!strAboutMenu.IsEmpty()) {
+            pSysMenu->AppendMenu(MF_SEPARATOR);
+            pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
+        }
+    }
 
-	// 设置此对话框的图标。  当应用程序主窗口不是对话框时，框架将自动
-	//  执行此操作
-	SetIcon(m_hIcon, TRUE);			// 设置大图标
-	SetIcon(m_hIcon, FALSE);		// 设置小图标
+    // 设置此对话框的图标。  当应用程序主窗口不是对话框时，框架将自动
+    //  执行此操作
+    SetIcon(m_hIcon, TRUE);			// 设置大图标
+    SetIcon(m_hIcon, FALSE);		// 设置小图标
 
-	// TODO: 在此添加额外的初始化代码
+    // TODO: 在此添加额外的初始化代码
     OnBnClickedOpenserver();
-	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
+    return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
 void CMFCQQServerDlg::OnSysCommand(UINT nID, LPARAM lParam)
 {
-	if ((nID & 0xFFF0) == IDM_ABOUTBOX)
-	{
-		CAboutDlg dlgAbout;
-		dlgAbout.DoModal();
-	}
-	else
-	{
-		CDialogEx::OnSysCommand(nID, lParam);
-	}
+    if ((nID & 0xFFF0) == IDM_ABOUTBOX) {
+        CAboutDlg dlgAbout;
+        dlgAbout.DoModal();
+    }
+    else {
+        CDialogEx::OnSysCommand(nID, lParam);
+    }
 }
 
 // 如果向对话框添加最小化按钮，则需要下面的代码
@@ -230,34 +251,32 @@ void CMFCQQServerDlg::OnSysCommand(UINT nID, LPARAM lParam)
 
 void CMFCQQServerDlg::OnPaint()
 {
-	if (IsIconic())
-	{
-		CPaintDC dc(this); // 用于绘制的设备上下文
+    if (IsIconic()) {
+        CPaintDC dc(this); // 用于绘制的设备上下文
 
-		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
+        SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
 
-		// 使图标在工作区矩形中居中
-		int cxIcon = GetSystemMetrics(SM_CXICON);
-		int cyIcon = GetSystemMetrics(SM_CYICON);
-		CRect rect;
-		GetClientRect(&rect);
-		int x = (rect.Width() - cxIcon + 1) / 2;
-		int y = (rect.Height() - cyIcon + 1) / 2;
+        // 使图标在工作区矩形中居中
+        int cxIcon = GetSystemMetrics(SM_CXICON);
+        int cyIcon = GetSystemMetrics(SM_CYICON);
+        CRect rect;
+        GetClientRect(&rect);
+        int x = (rect.Width() - cxIcon + 1) / 2;
+        int y = (rect.Height() - cyIcon + 1) / 2;
 
-		// 绘制图标
-		dc.DrawIcon(x, y, m_hIcon);
-	}
-	else
-	{
-		CDialogEx::OnPaint();
-	}
+        // 绘制图标
+        dc.DrawIcon(x, y, m_hIcon);
+    }
+    else {
+        CDialogEx::OnPaint();
+    }
 }
 
 //当用户拖动最小化窗口时系统调用此函数取得光标
 //显示。
 HCURSOR CMFCQQServerDlg::OnQueryDragIcon()
 {
-	return static_cast<HCURSOR>(m_hIcon);
+    return static_cast<HCURSOR>(m_hIcon);
 }
 
 void CMFCQQServerDlg::OnBnClickedOpenserver()
@@ -271,7 +290,7 @@ void CMFCQQServerDlg::OnBnClickedOpenserver()
     static bool firstOpen = 1;
     listenSocket = new ServerSocket(this);
     if (!listenSocket->Create(m_port, SOCK_STREAM)) {
-        if(!firstOpen){
+        if (!firstOpen) {
             MessageBox("创建套接字失败", "温馨提示");
         }
         firstOpen = 0;
@@ -283,7 +302,8 @@ void CMFCQQServerDlg::OnBnClickedOpenserver()
             MessageBox("开启成功", "温馨提示");
         else
             firstOpen = 0;
-    }else
+    }
+    else
         if (!firstOpen)
             MessageBox("开启失败，请重试", "温馨提示");
         else
@@ -299,6 +319,9 @@ void CMFCQQServerDlg::OnBnClickedSendMsg()
         MessageBox("请先输入消息", "温馨提示");
         return;
     }
+    for (auto &elem : userSockMap) {
+        sendMsg(sendData, elem.second);
+    }
     //lastClientSocket->Send(sendData, sendData.GetLength()+1);
-    
+
 }

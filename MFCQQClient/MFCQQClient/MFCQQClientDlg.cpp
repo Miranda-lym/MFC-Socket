@@ -76,6 +76,7 @@ void CMFCQQClientDlg::DoDataExchange(CDataExchange* pDX)
     CDialogEx::DoDataExchange(pDX);
     DDX_Text(pDX, IDC_Rece, m_receive);
     DDX_Text(pDX, IDC_Send, m_send);
+    DDX_Control(pDX, IDC_msgTo, m_cbMsgTo);
 }
 
 void CMFCQQClientDlg::receData()
@@ -85,25 +86,51 @@ void CMFCQQClientDlg::receData()
         msg.load(buffer);
         if (msg.type == TYPE[UserList]) { //表示登录成功
             m_connected = true;
-            m_receive = "已连上服务器\r\n" + msg.data;
-            UpdateData(false);
+            for (int i; (i = msg.data.Find(";")) != -1;) { //即找不到；了，即用户列表结束
+                CString user = msg.data.Left(i); //取左边i个字符组成的子串
+                if (user != login.userName) {
+                    m_cbMsgTo.AddString(user); //将用户名添加到下拉列表
+                }
+                msg.data = MyMsg::rightN(msg.data, i + 1);
+            }
+            m_cbMsgTo.SetCurSel(0);
+            updateEvent("已连上服务器", msg.data);
         }
         else if (msg.type == TYPE[LoginFail]) {
             login.loginFail = true;
         }
-        else {
-            m_receive += CString("\r\n") + buffer;
-            UpdateData(false);
+        else if (msg.type == TYPE[ChatMsg]) {
+            updateEvent(msg.fromUser, msg.data);
         }
-
+        else {
+            updateEvent("未知消息", buffer);
+        }
     }
+}
+
+void CMFCQQClientDlg::updateEvent(const CString & title, const CString & content)
+{
+    CString str;
+    if (content == "") {
+        str=title + "\r\n";
+    }
+    else {
+        str= title + ": " + content + "\r\n";
+    }
+    m_receive += str;
+    //UpdateData(false); //因为要让它滚动到最后一行，UpdateData是实现不了的
+    //用下面这四句实现，这里若不注释，那么每条消息会出现两次
+    CEdit* pEvent = (CEdit*)GetDlgItem(IDC_Rece); //获取到界面中一个控件，控件ID由我们自己写
+    int lastLine = pEvent->LineIndex(pEvent->GetLineCount()-1); //获取编辑框最后一行索引，该函数的参数必须是有效的索引值（下标），如有5行则有效的下标是0~4
+    pEvent->SetSel(lastLine + 1, lastLine + 2, 0); //选择编辑框最后一行
+    pEvent->ReplaceSel(str); //替换所选那一行的内容，本来下一行是没有内容的
 }
 
 BEGIN_MESSAGE_MAP(CMFCQQClientDlg, CDialogEx)
     ON_WM_SYSCOMMAND()
     ON_WM_PAINT()
     ON_WM_QUERYDRAGICON()
-    ON_BN_CLICKED(ID_ConnectServer, &CMFCQQClientDlg::OnBnClickedConnectserver)
+    ON_BN_CLICKED(ID_ConnectServer, &CMFCQQClientDlg::OnBnClickedLogout)
     ON_BN_CLICKED(IDC_SendMessage, &CMFCQQClientDlg::OnBnClickedSendMessage)
     ON_WM_TIMER()
 END_MESSAGE_MAP()
@@ -202,8 +229,14 @@ void CMFCQQClientDlg::showLoginDlg()
 }
 
 
-void CMFCQQClientDlg::OnBnClickedConnectserver()
+void CMFCQQClientDlg::OnBnClickedLogout()
 {
+    CString dataToSend = msg.join("", TYPE[Logout], userName, "", "", pwd);
+    pSock->Send(dataToSend, dataToSend.GetLength() + 1);//消息内容，消息长度
+    pSock->Close();
+    delete pSock;
+    pSock = NULL;
+    showLoginDlg();
 }
 
 
@@ -216,14 +249,17 @@ void CMFCQQClientDlg::OnBnClickedSendMessage()
             MessageBox("请输入要发送的消息", "温馨提示");
             return;
         }
-        CString dataToSend = msg.join(m_send, TYPE[ChatMsg], "wb", "", "lym");
+        CString toUser;
+        m_cbMsgTo.GetLBText(m_cbMsgTo.GetCurSel(),toUser);
+        CString dataToSend = msg.join(m_send, TYPE[ChatMsg], userName, "", toUser);
         if (pSock->Send(dataToSend, dataToSend.GetLength() + 1) == SOCKET_ERROR) {
             MessageBox("发送失败", "温馨提示");
         }
         else {
-            MessageBox("发送成功", "温馨提示");
+            CString buffer = m_send;
             m_send = "";
             UpdateData(false);
+            updateEvent("我", buffer);
         }
     }
     else {
@@ -234,9 +270,7 @@ void CMFCQQClientDlg::OnBnClickedSendMessage()
 
 void CMFCQQClientDlg::OnOK()
 {
-    // TODO: 在此添加专用代码和/或调用基类
     OnBnClickedSendMessage();
-    //CDialogEx::OnOK();
 }
 
 

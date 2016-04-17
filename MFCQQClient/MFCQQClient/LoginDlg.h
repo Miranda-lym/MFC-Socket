@@ -29,4 +29,5 @@ public:
     bool loginFail;
     CMFCQQClientDlg* pMainDlg;
     afx_msg void OnTimer(UINT_PTR nIDEvent);
+    virtual BOOL OnInitDialog();
 };

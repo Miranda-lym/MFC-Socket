@@ -28,6 +28,7 @@ public:
     void receData(ServerSocket* sock);
     bool isUserInfoValid(const CString & user,const CString & pwd);
     void sendMsg(const CString & data,ServerSocket* sock);
+    void updateEvent(const CString &title,const CString & content);
 private:
     ServerSocket* listenSocket;
     UINT m_port; //¶Ë¿ÚºÅ

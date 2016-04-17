@@ -6,6 +6,7 @@
 #include "ClientSocket.h"
 #include "MyMsg.h"
 #include "LoginDlg.h"
+#include "afxwin.h"
 
 // CMFCQQClientDlg 对话框
 class CMFCQQClientDlg : public CDialogEx
@@ -29,6 +30,7 @@ public:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 public:
     void receData();
+    void updateEvent(const CString & title, const CString & content);
     void showLoginDlg();
     friend void LoginDlg::OnBnClickedOk();
 // 实现
@@ -42,9 +44,10 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
-    afx_msg void OnBnClickedConnectserver();
     CString m_receive;
     CString m_send;
+    CComboBox m_cbMsgTo;
+    afx_msg void OnBnClickedLogout();
     afx_msg void OnBnClickedSendMessage();
     virtual void OnOK();
     afx_msg void OnTimer(UINT_PTR nIDEvent);

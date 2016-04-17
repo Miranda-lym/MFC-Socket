@@ -56,6 +56,9 @@ void LoginDlg::OnBnClickedOk()
         MessageBox("请输入密码", "温馨提示");
         return;
     }
+    AfxGetApp()->WriteProfileString("Login", "userName", userName);
+    AfxGetApp()->WriteProfileString("Login", "pwd", pwd);
+
     pMainDlg->pSock = new ClientSocket(pMainDlg);
     // ClientSocket sock(0);
     if (!pMainDlg->pSock->Create()) {
@@ -68,13 +71,11 @@ void LoginDlg::OnBnClickedOk()
         MessageBox("连接服务器失败！" + str, "提示", MB_ICONERROR);
         return;
     }
-    //sock.Close();
-    //CDialogEx::OnOK();
 
     CString dataToSend = pMainDlg->msg.join("", TYPE[Login], userName, "", "", pwd);
     pMainDlg->pSock->Send(dataToSend, dataToSend.GetLength() + 1);
     SetTimer(0, 1000, NULL);
-    pMainDlg->m_connected = loginFail = false;
+    pMainDlg->m_connected = loginFail = timeOut = false;
     while (!timeOut) {
         MSG m; //避免出现界面假死
         if (PeekMessage(&m, (HWND)NULL, 0, 0, PM_REMOVE))
@@ -106,4 +107,16 @@ void LoginDlg::OnTimer(UINT_PTR nIDEvent)
             break;
     }
     CDialogEx::OnTimer(nIDEvent);
+}
+
+
+BOOL LoginDlg::OnInitDialog()
+{
+    CDialogEx::OnInitDialog();
+
+    userName = AfxGetApp()->GetProfileString("Login", "userName");
+    pwd = AfxGetApp()->GetProfileString("Login", "pwd");
+    UpdateData(false);
+
+    return TRUE; 
 }
