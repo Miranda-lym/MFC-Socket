@@ -21,6 +21,7 @@
 #define   Login               17
 #define   Register            18
 #define   Status			  19
+#define   Sequze			  20
 
 #define   TYPE_ChatMsg             "ChatMsg"
 #define   TYPE_Server_is_closed    "Server_is_closed"
@@ -42,5 +43,6 @@
 #define   TYPE_Login               "Login"
 #define   TYPE_Register            "Register"
 #define   TYPE_Status              "Status"
+#define   TYPE_Sequze              "Sequze"
 
 #endif //_MYTYPE_H_

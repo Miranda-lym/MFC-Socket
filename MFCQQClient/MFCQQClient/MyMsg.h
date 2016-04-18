@@ -4,7 +4,7 @@
 
 #include "afxstr.h"
 
-extern const CString TYPE[30];
+extern const CString TYPE[31];
 extern const char seperator[3];
 
 class MyMsg

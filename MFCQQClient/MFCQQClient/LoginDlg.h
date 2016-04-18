@@ -30,4 +30,5 @@ public:
     CMFCQQClientDlg* pMainDlg;
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     virtual BOOL OnInitDialog();
+    afx_msg void OnBnClickedRegister();
 };

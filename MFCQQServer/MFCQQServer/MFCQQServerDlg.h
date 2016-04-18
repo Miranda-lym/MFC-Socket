@@ -52,5 +52,4 @@ public:
     afx_msg void OnBnClickedOpenserver();
     CString sendData;
     afx_msg void OnBnClickedSendMsg();
-    CString m_receiveData;
 };

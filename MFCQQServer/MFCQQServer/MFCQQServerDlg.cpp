@@ -63,7 +63,6 @@ bool findProcessByName(const CString &name) {
 CMFCQQServerDlg::CMFCQQServerDlg(CWnd* pParent /*=NULL*/)
     : CDialogEx(IDD_MFCQQSERVER_DIALOG, pParent)
     , sendData(_T(""))
-    , m_receiveData(_T(""))
 {
     m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
     listenSocket = NULL;
@@ -97,7 +96,6 @@ void CMFCQQServerDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialogEx::DoDataExchange(pDX);
     DDX_Text(pDX, IDC_SendData, sendData);
-    DDX_Text(pDX, IDC_RECE_DATA, m_receiveData);
 }
 
 void CMFCQQServerDlg::addClient()
@@ -114,10 +112,21 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
         msg.load(buffer);
         if (msg.type == TYPE[Login]) {
             if (isUserInfoValid(msg.userId, msg.pw)) {
-                CString dataToSend = msg.join(userList, TYPE[UserList], msg.userId);
-                sendMsg(dataToSend, sock);
-                userSockMap[msg.userId] = sock;
-                updateEvent(msg.userId + "已上线", "");
+                if (userSockMap.find(msg.userId) == userSockMap.end()) { //说明此时还未保存该用户的socket描述符，可以正常登录
+                    CString dataToSend = msg.join(userList, TYPE[UserList], msg.userId);
+                    sendMsg(dataToSend, sock);
+                    userSockMap[msg.userId] = sock;
+                    updateEvent(msg.userId + "已上线", "");
+                }else{
+                    CString dataToSend = msg.join(userList, TYPE[UserList], msg.userId);
+                    sendMsg(dataToSend, sock);
+                    dataToSend = msg.join("", TYPE[Sequze], msg.userId);
+                    sendMsg(dataToSend, userSockMap[msg.userId]);
+                    userSockMap[msg.userId]->Close();
+                    delete userSockMap[msg.userId];
+                    userSockMap[msg.userId] = sock;
+                    updateEvent(msg.userId + "已在另一处登录", "");
+                }
             }
             else {
                 CString dataToSend = msg.join("", TYPE[LoginFail], msg.userId);
@@ -151,10 +160,21 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                 }
             }
         }
+        else if (msg.type == TYPE[Register]) {
+            if (userInfoMap.find(msg.userId) == userInfoMap.end()) {
+                CString str = "insert into userinfo(userName,passwd) values('" + msg.userId + "','" + msg.pw + "')";
+                mysql_query(conn,str);
+                userInfoMap[msg.userId] = msg.pw; //在map中新增一项，将该用户名和密码对存入map中
+                userList += msg.userId + ";"; //在用户列表中新增一条用户名
+                for (auto &elem:userSockMap) {
+                    CString dataToSend = msg.join(msg.userId, TYPE[AddUserList], elem.first); //格式：消息内容 消息类型 谁能收到（这里针对服务器端来说，就是谁能收到，如果是针对客户端，即谁在发送）从哪里来 去哪里 密码是
+                    sendMsg(dataToSend, elem.second);
+                }
+            }
+        }
         else {
             updateEvent("未知消息", buffer);
         }
-        UpdateData(false);
     }
 }
 
@@ -184,7 +204,6 @@ void CMFCQQServerDlg::updateEvent(const CString & title, const CString & content
     else {
         str = title + ": " + content + "\r\n";
     }
-    m_receiveData += str;
     CEdit* pEvent = (CEdit*)GetDlgItem(IDC_RECE_DATA); //获取到界面中一个控件，控件ID由我们自己写
     int lastLine = pEvent->LineIndex(pEvent->GetLineCount() - 1); //获取编辑框最后一行索引，该函数的参数必须是有效的索引值（下标），如有5行则有效的下标是0~4
     pEvent->SetSel(lastLine + 1, lastLine + 2, 0); //选择编辑框最后一行

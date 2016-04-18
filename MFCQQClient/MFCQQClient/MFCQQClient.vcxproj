@@ -113,6 +113,7 @@
     <ClInclude Include="MFCQQClientDlg.h" />
     <ClInclude Include="MyMsg.h" />
     <ClInclude Include="MyType.h" />
+    <ClInclude Include="RegisterDlg.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -123,6 +124,7 @@
     <ClCompile Include="MFCQQClient.cpp" />
     <ClCompile Include="MFCQQClientDlg.cpp" />
     <ClCompile Include="MyMsg.cpp" />
+    <ClCompile Include="RegisterDlg.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>

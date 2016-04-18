@@ -7,6 +7,7 @@
 #include "afxdialogex.h"
 #include "ClientSocket.h"
 #include "MFCQQClientDlg.h"
+#include "RegisterDlg.h"
 
 
 // LoginDlg 对话框
@@ -38,6 +39,7 @@ void LoginDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(LoginDlg, CDialogEx)
     ON_BN_CLICKED(IDOK, &LoginDlg::OnBnClickedOk)
     ON_WM_TIMER()
+    ON_BN_CLICKED(IDC_Register, &LoginDlg::OnBnClickedRegister)
 END_MESSAGE_MAP()
 
 
@@ -46,7 +48,6 @@ END_MESSAGE_MAP()
 
 void LoginDlg::OnBnClickedOk()
 {
-    // TODO: 在此添加控件通知处理程序代码
     UpdateData(true);
     if (userName == "") {
         MessageBox("请输入用户名", "温馨提示");
@@ -60,7 +61,6 @@ void LoginDlg::OnBnClickedOk()
     AfxGetApp()->WriteProfileString("Login", "pwd", pwd);
 
     pMainDlg->pSock = new ClientSocket(pMainDlg);
-    // ClientSocket sock(0);
     if (!pMainDlg->pSock->Create()) {
         MessageBox("创建套接字失败！", "温馨提示", MB_ICONERROR);
         return;
@@ -99,7 +99,6 @@ void LoginDlg::OnBnClickedOk()
 
 void LoginDlg::OnTimer(UINT_PTR nIDEvent)
 {
-    // TODO: 在此添加消息处理程序代码和/或调用默认值
     switch (nIDEvent) {
         case 0:
             KillTimer(0);
@@ -117,6 +116,16 @@ BOOL LoginDlg::OnInitDialog()
     userName = AfxGetApp()->GetProfileString("Login", "userName");
     pwd = AfxGetApp()->GetProfileString("Login", "pwd");
     UpdateData(false);
+    GetDlgItem(IDC_USER_NAME)->SetFocus();
 
-    return TRUE; 
+    return FALSE; 
+}
+
+
+void LoginDlg::OnBnClickedRegister()
+{
+    ShowWindow(SW_HIDE);
+    RegisterDlg regDlg;
+    regDlg.DoModal();
+    ShowWindow(SW_SHOW);
 }

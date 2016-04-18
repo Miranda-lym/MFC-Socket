@@ -44,7 +44,6 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
-    CString m_receive;
     CString m_send;
     CComboBox m_cbMsgTo;
     afx_msg void OnBnClickedLogout();
