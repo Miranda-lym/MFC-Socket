@@ -10,15 +10,24 @@ ServerSocket::ServerSocket(CMFCQQServerDlg * _pDlg)
 
 void ServerSocket::OnAccept(int nErrorCode)
 {
-    // TODO: 在此添加专用代码和/或调用基类
     pDlg->addClient();
     CSocket::OnAccept(nErrorCode);
 }
 
+CString ServerSocket::getLastErrorStr()
+{
+    LPVOID lpMsgBuf;
+    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER
+                  | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
+                  , 0, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT)
+                  , (LPTSTR)&lpMsgBuf, 0, 0);
+    CString errStr = (LPCTSTR)lpMsgBuf;
+    LocalFree(lpMsgBuf);
+    return errStr;
+}
 
 void ServerSocket::OnReceive(int nErrorCode)
 {
-    // TODO: 在此添加专用代码和/或调用基类
     pDlg->receData(this);
     CSocket::OnReceive(nErrorCode);
 }

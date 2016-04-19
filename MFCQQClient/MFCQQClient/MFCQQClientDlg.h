@@ -30,8 +30,11 @@ public:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 public:
     void receData();
+    int sendMsg(const CString & data, ClientSocket* sock);
     void updateEvent(const CString & title, const CString & content);
+    void modifyStatus(const CString & status, bool _sleep=1);
     void showLoginDlg();
+    CString getDateTime(bool haveDate=0);
     friend void LoginDlg::OnBnClickedOk();
 // 实现
 protected:
@@ -50,4 +53,5 @@ public:
     afx_msg void OnBnClickedSendMessage();
     virtual void OnOK();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
+    afx_msg void OnSelChangeMsgTo();
 };

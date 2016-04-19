@@ -13,8 +13,9 @@
 
 IMPLEMENT_DYNAMIC(RegisterDlg, CDialogEx)
 
-RegisterDlg::RegisterDlg(CWnd* pParent /*=NULL*/)
-    : CDialogEx(IDD_Register, pParent)
+RegisterDlg::RegisterDlg(CMFCQQClientDlg * _pMainDlg)
+    : pMainDlg(_pMainDlg)
+    , CDialogEx(IDD_Register)
     , pwd(_T(""))
     , pwd2(_T(""))
     , userName(_T(""))
@@ -76,6 +77,7 @@ void RegisterDlg::OnBnClickedOk()
     }
     MyMsg msg;
     CString dataToSend = msg.join("", TYPE[Register], userName, "", "", pwd);
+    pMainDlg->sendMsg(dataToSend, &sock);
     sock.Send(dataToSend, dataToSend.GetLength() + 1);
     sock.Close();
     MessageBox("注册信息已发送，审核通过后即可进行登录！", "温馨提示");

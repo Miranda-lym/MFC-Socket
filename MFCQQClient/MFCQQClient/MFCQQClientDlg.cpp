@@ -65,7 +65,7 @@ CMFCQQClientDlg::CMFCQQClientDlg(CWnd* pParent /*=NULL*/)
 CMFCQQClientDlg::~CMFCQQClientDlg()
 {
     CString dataToSend = msg.join("", TYPE[Logout], userName, "", "", pwd);
-    pSock->Send(dataToSend, dataToSend.GetLength() + 1);//消息内容，消息长度
+    sendMsg(dataToSend, pSock);
     pSock->Close();
     delete pSock;
 }
@@ -93,7 +93,8 @@ void CMFCQQClientDlg::receData()
                 msg.data = MyMsg::rightN(msg.data, i + 1);
             }
             m_cbMsgTo.SetCurSel(0);
-            updateEvent("已连上服务器", msg.data);
+            modifyStatus("已连上服务器");
+            SetTimer(1, 3000, NULL); // 设置心跳包
         }
         else if (msg.type == TYPE[LoginFail]) {
             login.loginFail = true;
@@ -104,27 +105,58 @@ void CMFCQQClientDlg::receData()
         else if (msg.type == TYPE[AddUserList]) {
             m_cbMsgTo.AddString(msg.data); //增加一条用户信息
         }
-        else if (msg.type == TYPE[Sequze]) {
+        else if (msg.type == TYPE[Squezze]) {
             pSock->Close();
             delete pSock;
             pSock = NULL;
             MessageBox("由于您在另外一处登录，现在将被强制下线", "温馨提示");
             showLoginDlg();
         }
+        else if (msg.type == TYPE[OnlineState]) {
+            if (msg.data == "1") {
+                modifyStatus("该用户在线，您可直接发送消息！");
+            }else{
+                modifyStatus("该用户当前不在线，您可给他发送离线消息！");
+            }
+        }
+        else if (msg.type == TYPE[Server_is_closed]) {
+            KillTimer(1);
+            modifyStatus("服务器已停止运行，请稍后重新连接至服务器！");
+            MessageBox("服务器已停止运行，请稍后重新连接至服务器！");
+            showLoginDlg();
+        }
         else {
             updateEvent("未知消息", buffer);
         }
+    }else{
+        MessageBox(ClientSocket::getLastErrorStr(), "错误提示", MB_ICONERROR);
+    }
+}
+
+int CMFCQQClientDlg::sendMsg(const CString & data, ClientSocket * sock)
+{
+    if (sock->Send(data, data.GetLength() + 1) != SOCKET_ERROR) {
+        m_send = "";
+        UpdateData(FALSE);
+        return 0;
+    }
+    else {
+        KillTimer(1); //和服务器连接出错，无法发送消息时关闭心跳包的发送
+        MessageBox("发送消息失败：" + ClientSocket::getLastErrorStr(), "错误提示", MB_ICONERROR);
+        return SOCKET_ERROR;
     }
 }
 
 void CMFCQQClientDlg::updateEvent(const CString & title, const CString & content)
 {
-    CString str;
+    static bool firstRun = 1;
+    CString str = getDateTime(firstRun) + " ";
+    firstRun = 0;
     if (content == "") {
-        str = title + "\r\n";
+        str += title + "\r\n";
     }
     else {
-        str = title + ": " + content + "\r\n";
+        str += title + ": " + content + "\r\n";
     }
     //UpdateData(false); //因为要让它滚动到最后一行，UpdateData是实现不了的
     //用下面这四句实现，这里若不注释，那么每条消息会出现两次
@@ -134,6 +166,15 @@ void CMFCQQClientDlg::updateEvent(const CString & title, const CString & content
     pEvent->ReplaceSel(str); //替换所选那一行的内容，本来下一行是没有内容的
 }
 
+void CMFCQQClientDlg::modifyStatus(const CString & status, bool _sleep)
+{
+    HWND h = CreateStatusWindow(WS_CHILD | WS_VISIBLE, status, m_hWnd, 0);
+    if (_sleep) {
+        Sleep(50);
+    }
+    ::SendMessage(h, SB_SETBKCOLOR, 0, RGB(0, 125, 205)); //全局函数,则不会调用dlg类的成员函数，而是全局的成员函数
+}
+
 BEGIN_MESSAGE_MAP(CMFCQQClientDlg, CDialogEx)
     ON_WM_SYSCOMMAND()
     ON_WM_PAINT()
@@ -141,6 +182,7 @@ BEGIN_MESSAGE_MAP(CMFCQQClientDlg, CDialogEx)
     ON_BN_CLICKED(ID_ConnectServer, &CMFCQQClientDlg::OnBnClickedLogout)
     ON_BN_CLICKED(IDC_SendMessage, &CMFCQQClientDlg::OnBnClickedSendMessage)
     ON_WM_TIMER()
+    ON_CBN_SELCHANGE(IDC_msgTo, &CMFCQQClientDlg::OnSelChangeMsgTo)
 END_MESSAGE_MAP()
 
 
@@ -240,11 +282,22 @@ void CMFCQQClientDlg::showLoginDlg()
     SetWindowText("客户端 - " + userName);
 }
 
+CString CMFCQQClientDlg::getDateTime(bool haveDate)
+{
+    if (haveDate) {
+        return CTime::GetCurrentTime().Format("%Y-%m-%d %H:%M:%S");
+    }
+    else {
+        return CTime::GetCurrentTime().Format("%H:%M:%S");
+    }
+}
+
 
 void CMFCQQClientDlg::OnBnClickedLogout()
 {
+    KillTimer(1); //即将注销，所以此时关闭心跳包的发送，否则将会导致3秒内崩溃
     CString dataToSend = msg.join("", TYPE[Logout], userName, "", "", pwd);
-    pSock->Send(dataToSend, dataToSend.GetLength() + 1);//消息内容，消息长度
+    sendMsg(dataToSend, pSock);
     pSock->Close();
     delete pSock;
     pSock = NULL;
@@ -263,10 +316,7 @@ void CMFCQQClientDlg::OnBnClickedSendMessage()
         CString toUser;
         m_cbMsgTo.GetLBText(m_cbMsgTo.GetCurSel(), toUser);
         CString dataToSend = msg.join(m_send, TYPE[ChatMsg], userName, "", toUser);
-        if (pSock->Send(dataToSend, dataToSend.GetLength() + 1) == SOCKET_ERROR) {
-            MessageBox("发送失败", "温馨提示");
-        }
-        else {
+        if (sendMsg(dataToSend,pSock) != SOCKET_ERROR) {
             CString buffer = m_send;
             m_send = "";
             UpdateData(false);
@@ -294,6 +344,19 @@ void CMFCQQClientDlg::OnTimer(UINT_PTR nIDEvent)
             MessageBox("登录超时", "温馨提示");
             showLoginDlg();
             break;
+        case 1:
+            CString dataToSend = msg.join("", TYPE[I_am_online], userName);
+            sendMsg(dataToSend, pSock);
     }
     CDialogEx::OnTimer(nIDEvent);
+}
+
+
+void CMFCQQClientDlg::OnSelChangeMsgTo()
+{
+    CString who; //选定userList中的哪个用户
+    m_cbMsgTo.GetLBText(m_cbMsgTo.GetCurSel(),who);
+    //组织消息并发送给服务器，咨询该用户是否是在线
+    CString dataToSend = msg.join(who, TYPE[OnlineState], userName);
+    sendMsg(dataToSend, pSock);
 }

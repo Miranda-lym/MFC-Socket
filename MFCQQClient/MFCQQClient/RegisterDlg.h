@@ -1,6 +1,6 @@
 #pragma once
 
-
+#include "MFCQQClientDlg.h"
 // RegisterDlg 对话框
 
 class RegisterDlg : public CDialogEx
@@ -8,7 +8,7 @@ class RegisterDlg : public CDialogEx
 	DECLARE_DYNAMIC(RegisterDlg)
 
 public:
-	RegisterDlg(CWnd* pParent = NULL);   // 标准构造函数
+	RegisterDlg(CMFCQQClientDlg * _pMainDlg);   // 标准构造函数
 	virtual ~RegisterDlg();
 
 // 对话框数据
@@ -24,5 +24,6 @@ public:
     CString pwd;
     CString pwd2;
     CString userName;
+    CMFCQQClientDlg * pMainDlg;
     afx_msg void OnBnClickedOk();
 };

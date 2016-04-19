@@ -63,32 +63,21 @@ bool findProcessByName(const CString &name) {
 CMFCQQServerDlg::CMFCQQServerDlg(CWnd* pParent /*=NULL*/)
     : CDialogEx(IDD_MFCQQSERVER_DIALOG, pParent)
     , sendData(_T(""))
+    , m_onlineNum(0)
 {
     m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
     listenSocket = NULL;
     m_port = 22783;
-    if (!findProcessByName("mysqld.exe")) {
-        ShellExecute(0, "open", "mysqld", 0, 0, SW_HIDE);
+}
+
+CMFCQQServerDlg::~CMFCQQServerDlg() {
+    for (auto & elem : userSockMap) {
+        CString dataToSend = msg.join("", TYPE[Server_is_closed], elem.first);
+        sendMsg(dataToSend, elem.second);
     }
-    conn = mysql_init(0);
-    if (mysql_real_connect(conn, "localhost", "root", "123456", "test", 0, 0, 0) != 0) {
-        mysql_query(conn, "set names 'GBK'");
-        if (mysql_query(conn, "select userName,passwd from UserInfo") == 0) {
-            MYSQL_RES *res = mysql_store_result(conn);
-            MYSQL_ROW row;
-            userList = "";
-            while ((row = mysql_fetch_row(res)) != NULL) {
-                userInfoMap[row[0]] = row[1];
-                userList += row[0] + (CString)";";
-            }
-            mysql_free_result(res);
-        }
-        else
-            MessageBox(mysql_error(conn), "Error on MySQL:", MB_ICONERROR);
-    }
-    else {
-        MessageBox(mysql_error(conn), "Error on MySQL:", MB_ICONERROR);
-        exit(1);
+    for (auto &elem : userSockMap) {
+        elem.second->Close();
+        delete elem.second;
     }
 }
 
@@ -96,6 +85,7 @@ void CMFCQQServerDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialogEx::DoDataExchange(pDX);
     DDX_Text(pDX, IDC_SendData, sendData);
+    DDX_Text(pDX, IDC_OnlineNum, m_onlineNum);
 }
 
 void CMFCQQServerDlg::addClient()
@@ -117,10 +107,12 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                     sendMsg(dataToSend, sock);
                     userSockMap[msg.userId] = sock;
                     updateEvent(msg.userId + "已上线", "");
-                }else{
+                    ++m_onlineNum;
+                }
+                else {
                     CString dataToSend = msg.join(userList, TYPE[UserList], msg.userId);
                     sendMsg(dataToSend, sock);
-                    dataToSend = msg.join("", TYPE[Sequze], msg.userId);
+                    dataToSend = msg.join("", TYPE[Squezze], msg.userId);
                     sendMsg(dataToSend, userSockMap[msg.userId]);
                     userSockMap[msg.userId]->Close();
                     delete userSockMap[msg.userId];
@@ -140,6 +132,7 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                 delete userSockMap[msg.userId];
                 userSockMap.erase(it);
                 updateEvent(msg.userId + "已下线", "");
+                --m_onlineNum;
             }
         }
         else if (msg.type == TYPE[ChatMsg]) {
@@ -163,18 +156,32 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
         else if (msg.type == TYPE[Register]) {
             if (userInfoMap.find(msg.userId) == userInfoMap.end()) {
                 CString str = "insert into userinfo(userName,passwd) values('" + msg.userId + "','" + msg.pw + "')";
-                mysql_query(conn,str);
+                mysql_query(conn, str);
                 userInfoMap[msg.userId] = msg.pw; //在map中新增一项，将该用户名和密码对存入map中
                 userList += msg.userId + ";"; //在用户列表中新增一条用户名
-                for (auto &elem:userSockMap) {
+                for (auto &elem : userSockMap) {
                     CString dataToSend = msg.join(msg.userId, TYPE[AddUserList], elem.first); //格式：消息内容 消息类型 谁能收到（这里针对服务器端来说，就是谁能收到，如果是针对客户端，即谁在发送）从哪里来 去哪里 密码是
                     sendMsg(dataToSend, elem.second);
                 }
             }
         }
+        else if (msg.type == TYPE[OnlineState]) {
+            if (userSockMap.find(msg.data) != userSockMap.end()) {
+                CString dataToSend = msg.join("1", TYPE[OnlineState], msg.userId);
+                sendMsg(dataToSend, userSockMap[msg.userId]);
+            }
+            else {
+                CString dataToSend = msg.join("0", TYPE[OnlineState], msg.userId);
+                sendMsg(dataToSend, userSockMap[msg.userId]);
+            }
+        }
+        else if (msg.type == TYPE[I_am_online]) {
+            //每3秒收到一个I_am_online消息，从而不会实现那个socket优化功能（即用户一段时间不发消息，则服务器自动断开与其的连接） 
+        }
         else {
             updateEvent("未知消息", buffer);
         }
+        UpdateData(FALSE);
     }
 }
 
@@ -187,27 +194,53 @@ bool CMFCQQServerDlg::isUserInfoValid(const CString & user, const CString & pwd)
     return false;
 }
 
-void CMFCQQServerDlg::sendMsg(const CString & data, ServerSocket * sock)
+int CMFCQQServerDlg::sendMsg(const CString & data, ServerSocket * sock)
 {
     if (sock->Send(data, data.GetLength() + 1) != SOCKET_ERROR) { //即发送成功
         sendData = "";
         UpdateData(false);
+        return 0;
+    }
+    else {
+        MessageBox("发送消息失败：" + ServerSocket::getLastErrorStr(), "错误提示", MB_ICONERROR);
+        return SOCKET_ERROR;
     }
 }
 
 void CMFCQQServerDlg::updateEvent(const CString & title, const CString & content)
 {
-    CString str;
+    static bool firstRun = 1;
+    CString str = getDateTime(firstRun) + " ";
+    firstRun = 0;
     if (content == "") {
-        str = title + "\r\n";
+        str += title + "\r\n";
     }
     else {
-        str = title + ": " + content + "\r\n";
+        str += title + ": " + content + "\r\n";
     }
     CEdit* pEvent = (CEdit*)GetDlgItem(IDC_RECE_DATA); //获取到界面中一个控件，控件ID由我们自己写
     int lastLine = pEvent->LineIndex(pEvent->GetLineCount() - 1); //获取编辑框最后一行索引，该函数的参数必须是有效的索引值（下标），如有5行则有效的下标是0~4
     pEvent->SetSel(lastLine + 1, lastLine + 2, 0); //选择编辑框最后一行
     pEvent->ReplaceSel(str); //替换所选那一行的内容，本来下一行是没有内容的
+}
+
+CString CMFCQQServerDlg::getDateTime(bool haveDate)
+{
+    if (haveDate) {
+        return CTime::GetCurrentTime().Format("%Y-%m-%d %H:%M:%S");
+    }
+    else {
+        return CTime::GetCurrentTime().Format("%H:%M:%S");
+    }
+}
+
+void CMFCQQServerDlg::modifyStatus(const CString & status, bool _sleep)
+{
+    HWND h = CreateStatusWindow(WS_CHILD | WS_VISIBLE, status, m_hWnd, 0);
+    if (_sleep) {
+        Sleep(50);
+    }
+    ::SendMessage(h, SB_SETBKCOLOR, 0, RGB(0, 125, 205)); //全局函数,则不会调用dlg类的成员函数，而是全局的成员函数
 }
 
 BEGIN_MESSAGE_MAP(CMFCQQServerDlg, CDialogEx)
@@ -216,6 +249,7 @@ BEGIN_MESSAGE_MAP(CMFCQQServerDlg, CDialogEx)
     ON_WM_QUERYDRAGICON()
     ON_BN_CLICKED(ID_OpenServer, &CMFCQQServerDlg::OnBnClickedOpenserver)
     ON_BN_CLICKED(IDC_SendMsg, &CMFCQQServerDlg::OnBnClickedSendMsg)
+    ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -249,7 +283,15 @@ BOOL CMFCQQServerDlg::OnInitDialog()
     SetIcon(m_hIcon, FALSE);		// 设置小图标
 
     // TODO: 在此添加额外的初始化代码
+    if (!findProcessByName("mysqld.exe")) {
+        ShellExecute(0, "open", "mysqld", 0, 0, SW_HIDE);
+        SetTimer(0, 1000, NULL);
+    }
+    else {
+        SetTimer(0, 1, NULL);
+    }
     OnBnClickedOpenserver();
+    modifyStatus("服务器已开启", 0);
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -322,25 +364,57 @@ void CMFCQQServerDlg::OnBnClickedOpenserver()
         else
             firstOpen = 0;
     }
-    else
+    else {
         if (!firstOpen)
-            MessageBox("开启失败，请重试", "温馨提示");
+            MessageBox("开启失败，请重试:" + ServerSocket::getLastErrorStr(), "温馨提示");
         else
             firstOpen = 0;
+    }
 }
 
 
 void CMFCQQServerDlg::OnBnClickedSendMsg()
 {
-    // TODO: 在此添加控件通知处理程序代码
     UpdateData(true);
     if (sendData == "") {
         MessageBox("请先输入消息", "温馨提示");
         return;
     }
     for (auto &elem : userSockMap) {
-        sendMsg(sendData, elem.second);
+        CString dataToSend = msg.join(sendData, TYPE[ChatMsg], elem.first); //发送内容 消息类型 谁会收到
+        sendMsg(dataToSend, elem.second);
     }
-    //lastClientSocket->Send(sendData, sendData.GetLength()+1);
+}
 
+
+void CMFCQQServerDlg::OnTimer(UINT_PTR nIDEvent)
+{
+    // TODO: 在此添加消息处理程序代码和/或调用默认值
+    switch (nIDEvent) {
+        case 0:
+            KillTimer(0);
+            conn = mysql_init(0);
+            if (mysql_real_connect(conn, "localhost", "root", "123456", "test", 0, 0, 0) != 0) {
+                mysql_query(conn, "set names 'GBK'");
+                if (mysql_query(conn, "select userName,passwd from UserInfo") == 0) {
+                    MYSQL_RES *res = mysql_store_result(conn);
+                    MYSQL_ROW row;
+                    userList = "";
+                    while ((row = mysql_fetch_row(res)) != NULL) {
+                        userInfoMap[row[0]] = row[1];
+                        userList += row[0] + (CString)";";
+                    }
+                    mysql_free_result(res);
+                }
+                else
+                    MessageBox(mysql_error(conn), "Error on MySQL:", MB_ICONERROR);
+            }
+            else {
+                MessageBox(mysql_error(conn), "Error on MySQL:", MB_ICONERROR);
+                exit(1);
+            }
+            break;
+    }
+
+    CDialogEx::OnTimer(nIDEvent);
 }

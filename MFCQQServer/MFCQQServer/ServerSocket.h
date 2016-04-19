@@ -9,6 +9,7 @@ public:
     ServerSocket(CMFCQQServerDlg* _pDlg);
 
     virtual void OnAccept(int nErrorCode);
+    static CString getLastErrorStr();
     virtual void OnReceive(int nErrorCode);
 };
 

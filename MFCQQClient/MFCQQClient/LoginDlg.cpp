@@ -66,14 +66,17 @@ void LoginDlg::OnBnClickedOk()
         return;
     }
     if (!pMainDlg->pSock->Connect("127.0.0.1", 22783)) {
-        CString str;
-        str.Format("错误代码：%d", GetLastError());
-        MessageBox("连接服务器失败！" + str, "提示", MB_ICONERROR);
+        MessageBox("连接服务器失败！" + ClientSocket::getLastErrorStr(), "提示", MB_ICONERROR);
         return;
     }
 
     CString dataToSend = pMainDlg->msg.join("", TYPE[Login], userName, "", "", pwd);
-    pMainDlg->pSock->Send(dataToSend, dataToSend.GetLength() + 1);
+    if(pMainDlg->sendMsg(dataToSend,pMainDlg->pSock)==SOCKET_ERROR) {
+        pMainDlg->pSock->Close();
+        delete pMainDlg->pSock;
+        pMainDlg->pSock = NULL;
+        return;
+    }
     SetTimer(0, 1000, NULL);
     pMainDlg->m_connected = loginFail = timeOut = false;
     while (!timeOut) {
@@ -125,7 +128,7 @@ BOOL LoginDlg::OnInitDialog()
 void LoginDlg::OnBnClickedRegister()
 {
     ShowWindow(SW_HIDE);
-    RegisterDlg regDlg;
+    RegisterDlg regDlg(pMainDlg);
     regDlg.DoModal();
     ShowWindow(SW_SHOW);
 }

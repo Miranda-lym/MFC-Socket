@@ -12,23 +12,29 @@
 // CMFCQQServerDlg 对话框
 class CMFCQQServerDlg : public CDialogEx
 {
-// 构造
+    // 构造
 public:
-	CMFCQQServerDlg(CWnd* pParent = NULL);	// 标准构造函数
+    CMFCQQServerDlg(CWnd* pParent = NULL);	// 标准构造函数
+
+    ~CMFCQQServerDlg();
 
 // 对话框数据
 #ifdef AFX_DESIGN_TIME
-	enum { IDD = IDD_MFCQQSERVER_DIALOG };
+    enum {
+        IDD = IDD_MFCQQSERVER_DIALOG
+    };
 #endif
 
 protected:
-	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
+    virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 public:
     void addClient();
     void receData(ServerSocket* sock);
-    bool isUserInfoValid(const CString & user,const CString & pwd);
-    void sendMsg(const CString & data,ServerSocket* sock);
-    void updateEvent(const CString &title,const CString & content);
+    bool isUserInfoValid(const CString & user, const CString & pwd);
+    int sendMsg(const CString & data, ServerSocket* sock);
+    void updateEvent(const CString &title, const CString & content);
+    CString getDateTime(bool haveDate = 0);
+    void modifyStatus(const CString &status, bool _sleep);
 private:
     ServerSocket* listenSocket;
     UINT m_port; //端口号
@@ -40,16 +46,18 @@ private:
     CString userList; //用户列表，包含所有用户名，用户登录时发送过去
 // 实现
 protected:
-	HICON m_hIcon;
+    HICON m_hIcon;
 
-	// 生成的消息映射函数
-	virtual BOOL OnInitDialog();
-	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
-	afx_msg void OnPaint();
-	afx_msg HCURSOR OnQueryDragIcon();
-	DECLARE_MESSAGE_MAP()
+    // 生成的消息映射函数
+    virtual BOOL OnInitDialog();
+    afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
+    afx_msg void OnPaint();
+    afx_msg HCURSOR OnQueryDragIcon();
+    DECLARE_MESSAGE_MAP()
 public:
-    afx_msg void OnBnClickedOpenserver();
     CString sendData;
+    int m_onlineNum;
+    afx_msg void OnBnClickedOpenserver();
     afx_msg void OnBnClickedSendMsg();
+    afx_msg void OnTimer(UINT_PTR nIDEvent);
 };

@@ -8,7 +8,7 @@ class ClientSocket :
     CMFCQQClientDlg* pDlg;
 public:
     ClientSocket(CMFCQQClientDlg* _pDlg);
-    ~ClientSocket();
+    static CString getLastErrorStr();
     virtual void OnReceive(int nErrorCode);
 };
 
