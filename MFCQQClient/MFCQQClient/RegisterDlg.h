@@ -26,4 +26,5 @@ public:
     CString userName;
     CMFCQQClientDlg * pMainDlg;
     afx_msg void OnBnClickedOk();
+    virtual BOOL OnInitDialog();
 };

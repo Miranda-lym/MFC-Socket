@@ -55,7 +55,6 @@ protected:
     afx_msg HCURSOR OnQueryDragIcon();
     DECLARE_MESSAGE_MAP()
 public:
-    CString sendData;
     int m_onlineNum;
     afx_msg void OnBnClickedOpenserver();
     afx_msg void OnBnClickedSendMsg();

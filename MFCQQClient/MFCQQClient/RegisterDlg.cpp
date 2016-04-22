@@ -49,18 +49,24 @@ void RegisterDlg::OnBnClickedOk()
     UpdateData(TRUE);
     if (userName == "") {
         MessageBox("请输入用户名");
+        GetDlgItem(IDC_UserName)->SetFocus();
         return;
     }
     if (pwd == "") {
         MessageBox("请输入密码");
+        GetDlgItem(IDC_PWD)->SetFocus();
         return;
     }
     if (pwd2 == "") {
         MessageBox("请确认密码");
+        GetDlgItem(IDC_PWD2)->SetFocus();
         return;
     }
     if (pwd != pwd2) {
         MessageBox("两次密码不一致，请重新输入","温馨提示",MB_ICONERROR);
+        pwd2 = "";
+        UpdateData(FALSE);
+        GetDlgItem(IDC_PWD2)->SetFocus();
         return;
     }
     ClientSocket sock(0);
@@ -78,8 +84,18 @@ void RegisterDlg::OnBnClickedOk()
     MyMsg msg;
     CString dataToSend = msg.join("", TYPE[Register], userName, "", "", pwd);
     pMainDlg->sendMsg(dataToSend, &sock);
-    sock.Send(dataToSend, dataToSend.GetLength() + 1);
     sock.Close();
     MessageBox("注册信息已发送，审核通过后即可进行登录！", "温馨提示");
     CDialogEx::OnOK();
+}
+
+
+BOOL RegisterDlg::OnInitDialog()
+{
+    CDialogEx::OnInitDialog();
+
+    // TODO:  在此添加额外的初始化
+    GetDlgItem(IDC_UserName)->SetFocus();
+
+    return FALSE;  
 }

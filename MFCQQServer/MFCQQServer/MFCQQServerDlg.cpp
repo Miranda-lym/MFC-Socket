@@ -62,7 +62,6 @@ bool findProcessByName(const CString &name) {
 
 CMFCQQServerDlg::CMFCQQServerDlg(CWnd* pParent /*=NULL*/)
     : CDialogEx(IDD_MFCQQSERVER_DIALOG, pParent)
-    , sendData(_T(""))
     , m_onlineNum(0)
 {
     m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
@@ -84,7 +83,6 @@ CMFCQQServerDlg::~CMFCQQServerDlg() {
 void CMFCQQServerDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialogEx::DoDataExchange(pDX);
-    DDX_Text(pDX, IDC_SendData, sendData);
     DDX_Text(pDX, IDC_OnlineNum, m_onlineNum);
 }
 
@@ -163,6 +161,9 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                     CString dataToSend = msg.join(msg.userId, TYPE[AddUserList], elem.first); //格式：消息内容 消息类型 谁能收到（这里针对服务器端来说，就是谁能收到，如果是针对客户端，即谁在发送）从哪里来 去哪里 密码是
                     sendMsg(dataToSend, elem.second);
                 }
+                updateEvent("", msg.userId + "已注册");
+            }else{
+                updateEvent("", msg.userId + "尝试注册，但该用户已存在");
             }
         }
         else if (msg.type == TYPE[OnlineState]) {
@@ -196,15 +197,11 @@ bool CMFCQQServerDlg::isUserInfoValid(const CString & user, const CString & pwd)
 
 int CMFCQQServerDlg::sendMsg(const CString & data, ServerSocket * sock)
 {
-    if (sock->Send(data, data.GetLength() + 1) != SOCKET_ERROR) { //即发送成功
-        sendData = "";
-        UpdateData(false);
-        return 0;
-    }
-    else {
+    if (sock->Send(data, data.GetLength() + 1) == SOCKET_ERROR) {
         MessageBox("发送消息失败：" + ServerSocket::getLastErrorStr(), "错误提示", MB_ICONERROR);
         return SOCKET_ERROR;
     }
+    return 0;
 }
 
 void CMFCQQServerDlg::updateEvent(const CString & title, const CString & content)
@@ -285,7 +282,7 @@ BOOL CMFCQQServerDlg::OnInitDialog()
     // TODO: 在此添加额外的初始化代码
     if (!findProcessByName("mysqld.exe")) {
         ShellExecute(0, "open", "mysqld", 0, 0, SW_HIDE);
-        SetTimer(0, 1000, NULL);
+        SetTimer(0, 2000, NULL);
     }
     else {
         SetTimer(0, 1, NULL);
@@ -342,7 +339,6 @@ HCURSOR CMFCQQServerDlg::OnQueryDragIcon()
 
 void CMFCQQServerDlg::OnBnClickedOpenserver()
 {
-    // TODO: 在此添加控件通知处理程序代码
     if (listenSocket != NULL) {
         listenSocket->Close();
         delete listenSocket;
@@ -375,7 +371,8 @@ void CMFCQQServerDlg::OnBnClickedOpenserver()
 
 void CMFCQQServerDlg::OnBnClickedSendMsg()
 {
-    UpdateData(true);
+    CString sendData;
+    GetDlgItemText(IDC_SendData, sendData);
     if (sendData == "") {
         MessageBox("请先输入消息", "温馨提示");
         return;
@@ -384,12 +381,12 @@ void CMFCQQServerDlg::OnBnClickedSendMsg()
         CString dataToSend = msg.join(sendData, TYPE[ChatMsg], elem.first); //发送内容 消息类型 谁会收到
         sendMsg(dataToSend, elem.second);
     }
+    SetDlgItemText(IDC_SendData, "");
 }
 
 
 void CMFCQQServerDlg::OnTimer(UINT_PTR nIDEvent)
 {
-    // TODO: 在此添加消息处理程序代码和/或调用默认值
     switch (nIDEvent) {
         case 0:
             KillTimer(0);
