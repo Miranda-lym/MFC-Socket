@@ -53,4 +53,5 @@ public:
     virtual void OnOK();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     afx_msg void OnSelChangeMsgTo();
+    virtual BOOL PreTranslateMessage(MSG* pMsg);
 };

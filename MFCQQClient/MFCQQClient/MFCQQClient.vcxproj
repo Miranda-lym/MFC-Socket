@@ -108,6 +108,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ClientSocket.h" />
+    <ClInclude Include="DB_Msg.hpp" />
     <ClInclude Include="LoginDlg.h" />
     <ClInclude Include="MFCQQClient.h" />
     <ClInclude Include="MFCQQClientDlg.h" />

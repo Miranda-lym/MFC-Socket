@@ -59,4 +59,5 @@ public:
     afx_msg void OnBnClickedOpenserver();
     afx_msg void OnBnClickedSendMsg();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
+    virtual BOOL PreTranslateMessage(MSG* pMsg);
 };

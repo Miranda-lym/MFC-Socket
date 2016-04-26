@@ -45,6 +45,9 @@
     <ClInclude Include="RegisterDlg.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="DB_Msg.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MFCQQClient.cpp">

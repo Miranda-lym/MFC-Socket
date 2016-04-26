@@ -378,9 +378,10 @@ void CMFCQQServerDlg::OnBnClickedSendMsg()
         return;
     }
     for (auto &elem : userSockMap) {
-        CString dataToSend = msg.join(sendData, TYPE[ChatMsg], elem.first); //发送内容 消息类型 谁会收到
+        CString dataToSend = msg.join(sendData, TYPE[ChatMsg], elem.first,"服务器"); //发送内容 消息类型 谁会收到
         sendMsg(dataToSend, elem.second);
     }
+    updateEvent("服务器",sendData); //更新接收区
     SetDlgItemText(IDC_SendData, "");
 }
 
@@ -414,4 +415,28 @@ void CMFCQQServerDlg::OnTimer(UINT_PTR nIDEvent)
     }
 
     CDialogEx::OnTimer(nIDEvent);
+}
+
+
+BOOL CMFCQQServerDlg::PreTranslateMessage(MSG* pMsg)
+{
+    int cont_ID = GetWindowLong(pMsg->hwnd, GWL_ID); //获取响应控件消息的ID
+    if (cont_ID == IDC_SendData) { //判断是否是要处理的控件的ID
+        if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_RETURN) { //若按下键盘且为enter键
+            if (GetKeyState(VK_CONTROL) & 0x80) { //在已经按下enter的前提下又按下了ctrl键（这里0x80是对所有按键的检测）
+                                                  //添加换行
+                CString str;
+                GetDlgItemText(IDC_SendData, str);
+                SetDlgItemText(IDC_SendData, str + "\r\n");
+                //设置光标位置，将光标移至最后一个位置
+                CEdit* pEdit = (CEdit*)GetDlgItem(IDC_SendData);
+                int len = str.GetLength() + 2;
+                pEdit->SetSel(len - 1, len); //SetSel()用来选中，两参数分别代表选中的起始位置和最终位置
+            }
+            else {
+                OnBnClickedSendMsg();
+            }
+        }
+    }
+    return CDialogEx::PreTranslateMessage(pMsg);
 }

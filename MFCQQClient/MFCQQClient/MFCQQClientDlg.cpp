@@ -145,9 +145,10 @@ int CMFCQQClientDlg::sendMsg(const CString & data, ClientSocket * sock)
 
 void CMFCQQClientDlg::updateEvent(const CString & title, const CString & content)
 {
-    static bool firstRun = 1;
-    CString str = getDateTime(firstRun) + " ";
-    firstRun = 0;
+    CString curData;
+    GetDlgItemText(IDC_Rece, curData); //将空间IDC_Rece中的内容放到变量curData中
+    bool haveDate = (curData == ""); //若此时接收区为空，则加上日期
+    CString str = getDateTime(haveDate) + " ";
     if (content == "") {
         str += title + "\r\n";
     }
@@ -266,7 +267,7 @@ HCURSOR CMFCQQClientDlg::OnQueryDragIcon()
 void CMFCQQClientDlg::showLoginDlg()
 {
     SetDlgItemText(IDC_Rece, ""); //未绑定变量，所以通过控件的ID来清空内容
-    SetDlgItemText(IDC_Send,""); //未绑定变量，所以通过控件的ID来清空内容
+    SetDlgItemText(IDC_Send, ""); //未绑定变量，所以通过控件的ID来清空内容
     ShowWindow(SW_HIDE);
     if (login.DoModal() != IDOK) {
         exit(1);
@@ -353,4 +354,28 @@ void CMFCQQClientDlg::OnSelChangeMsgTo()
     //组织消息并发送给服务器，咨询该用户是否是在线
     CString dataToSend = msg.join(who, TYPE[OnlineState], userName);
     sendMsg(dataToSend, pSock);
+}
+
+
+BOOL CMFCQQClientDlg::PreTranslateMessage(MSG* pMsg)
+{
+    int cont_ID = GetWindowLong(pMsg->hwnd, GWL_ID); //获取响应控件消息的ID
+    if (cont_ID == IDC_Send) { //判断是否是要处理的控件的ID
+        if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_RETURN) { //若按下键盘且为enter键
+            if (GetKeyState(VK_CONTROL) & 0x80) { //在已经按下enter的前提下又按下了ctrl键（这里0x80是对所有按键的检测）
+                //添加换行
+                CString str;
+                GetDlgItemText(IDC_Send, str);
+                SetDlgItemText(IDC_Send, str + "\r\n");
+                //设置光标位置，将光标移至最后一个位置
+                CEdit* pEdit = (CEdit*)GetDlgItem(IDC_Send);
+                int len = str.GetLength() + 2;
+                pEdit->SetSel(len - 1, len); //SetSel()用来选中，两参数分别代表选中的起始位置和最终位置
+            }
+            else {
+                OnBnClickedSendMessage();
+            }
+        }
+    }
+    return CDialogEx::PreTranslateMessage(pMsg); //默认处理方式
 }
