@@ -84,8 +84,8 @@ void RegisterDlg::OnBnClickedOk()
     MyMsg msg;
     CString dataToSend = msg.join("", TYPE[Register], userName, "", "", pwd);
     pMainDlg->sendMsg(dataToSend, &sock);
-    sock.Close();
     MessageBox("注册信息已发送，审核通过后即可进行登录！", "温馨提示");
+    sock.Close();
     CDialogEx::OnOK();
 }
 

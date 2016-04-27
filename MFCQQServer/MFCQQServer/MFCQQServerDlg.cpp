@@ -12,6 +12,10 @@
 #define new DEBUG_NEW
 #endif
 
+string DB_Connector::host_ = "localhost";
+string DB_Connector::user_ = "root";
+string DB_Connector::passwd_ = "123456";
+string DB_Connector::db_ = "mfc_qq_server";
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
@@ -63,6 +67,7 @@ bool findProcessByName(const CString &name) {
 CMFCQQServerDlg::CMFCQQServerDlg(CWnd* pParent /*=NULL*/)
     : CDialogEx(IDD_MFCQQSERVER_DIALOG, pParent)
     , m_onlineNum(0)
+    , p_offlineMsg(NULL)
 {
     m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
     listenSocket = NULL;
@@ -106,6 +111,18 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                     userSockMap[msg.userId] = sock;
                     updateEvent(msg.userId + "已上线", "");
                     ++m_onlineNum;
+                    auto res = p_offlineMsg->pop(msg.userId.GetBuffer()); //GetBuffer是CString类的成员函数，c_str()是string类的成员函数，pop(),取出并删除消息
+                    if (res.size() > 0) { //即数据库中有发给该用户的离线消息
+                        dataToSend = "";
+                        for (auto& it : res) {
+                            for (auto&elem : it) {
+                                dataToSend += (elem + seperator).c_str();
+                            }
+                        }
+                        dataToSend = msg.join(dataToSend, TYPE[OfflineMsg]);
+                        Sleep(100);
+                        sendMsg(dataToSend, sock);
+                    }
                 }
                 else {
                     CString dataToSend = msg.join(userList, TYPE[UserList], msg.userId);
@@ -145,9 +162,10 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                     updateEvent(msg.userId + "给" + msg.toUser, msg.data);
                 }
                 else {
-                    CString dataToSend = msg.join(msg.toUser + "不在线,请稍后重试", TYPE[ChatMsg], msg.userId, "服务器");
+                    CString dataToSend = msg.join(msg.toUser + "不在线,已转为离线消息", TYPE[ChatMsg], msg.userId, "服务器");
                     sendMsg(dataToSend, userSockMap[msg.userId]);
-                    updateEvent(msg.userId + "给" + msg.toUser, msg.data + "（发送失败，该用户暂不在线！）");
+                    updateEvent(msg.userId + "给" + msg.toUser, msg.data + "（离线消息）");
+                    p_offlineMsg->push(msg.userId.GetBuffer(), msg.toUser.GetBuffer(), msg.data.GetBuffer());
                 }
             }
         }
@@ -162,7 +180,8 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                     sendMsg(dataToSend, elem.second);
                 }
                 updateEvent("", msg.userId + "已注册");
-            }else{
+            }
+            else {
                 updateEvent("", msg.userId + "尝试注册，但该用户已存在");
             }
         }
@@ -378,10 +397,10 @@ void CMFCQQServerDlg::OnBnClickedSendMsg()
         return;
     }
     for (auto &elem : userSockMap) {
-        CString dataToSend = msg.join(sendData, TYPE[ChatMsg], elem.first,"服务器"); //发送内容 消息类型 谁会收到
+        CString dataToSend = msg.join(sendData, TYPE[ChatMsg], elem.first, "服务器"); //发送内容 消息类型 谁会收到
         sendMsg(dataToSend, elem.second);
     }
-    updateEvent("服务器",sendData); //更新接收区
+    updateEvent("服务器", sendData); //更新接收区
     SetDlgItemText(IDC_SendData, "");
 }
 
@@ -411,6 +430,7 @@ void CMFCQQServerDlg::OnTimer(UINT_PTR nIDEvent)
                 MessageBox(mysql_error(conn), "Error on MySQL:", MB_ICONERROR);
                 exit(1);
             }
+            p_offlineMsg = new DB_OfflineMsg("offline_msg", "offline_msg.log");
             break;
     }
 

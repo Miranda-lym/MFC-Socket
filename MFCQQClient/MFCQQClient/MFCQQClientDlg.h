@@ -31,7 +31,7 @@ public:
 public:
     void receData();
     int sendMsg(const CString & data, ClientSocket* sock);
-    void updateEvent(const CString & title, const CString & content);
+    void updateEvent(const CString & title, const CString & content,const CString setTime="-");
     void modifyStatus(const CString & status, bool _sleep=1);
     void showLoginDlg();
     CString getDateTime(bool haveDate=0);

@@ -104,6 +104,7 @@ void CMFCQQClientDlg::receData()
             m_cbMsgTo.AddString(msg.data); //增加一条用户信息
         }
         else if (msg.type == TYPE[Squezze]) {
+            KillTimer(1);
             pSock->Close();
             delete pSock;
             pSock = NULL;
@@ -124,6 +125,22 @@ void CMFCQQClientDlg::receData()
             MessageBox("服务器已停止运行，请稍后重新连接至服务器！");
             showLoginDlg();
         }
+        else if (msg.type == TYPE[OfflineMsg]) {
+            while (msg.data != "") {
+                CString _from, _time, _content;
+                int i = msg.data.Find(seperator);
+                _from = msg.data.Left(i);
+                msg.data = MyMsg::rightN(msg.data, i + 2);
+                i = msg.data.Find(seperator);
+                _time = msg.data.Left(i);
+                msg.data = MyMsg::rightN(msg.data, i + 2);
+                i = msg.data.Find(seperator);
+                _content = msg.data.Left(i);
+                msg.data = MyMsg::rightN(msg.data, i + 2);
+                updateEvent(_from, _content, _time);
+            }
+            updateEvent("—————以上是离线消息—————", "", "");
+        }
         else {
             updateEvent("未知消息", buffer);
         }
@@ -143,12 +160,15 @@ int CMFCQQClientDlg::sendMsg(const CString & data, ClientSocket * sock)
     return 0;
 }
 
-void CMFCQQClientDlg::updateEvent(const CString & title, const CString & content)
+void CMFCQQClientDlg::updateEvent(const CString & title, const CString & content, const CString setTime)
 {
     CString curData;
     GetDlgItemText(IDC_Rece, curData); //将空间IDC_Rece中的内容放到变量curData中
     bool haveDate = (curData == ""); //若此时接收区为空，则加上日期
     CString str = getDateTime(haveDate) + " ";
+    if (setTime != "-") {
+        str = setTime + " ";
+    }
     if (content == "") {
         str += title + "\r\n";
     }
@@ -342,6 +362,7 @@ void CMFCQQClientDlg::OnTimer(UINT_PTR nIDEvent)
         case 1:
             CString dataToSend = msg.join("", TYPE[I_am_online], userName);
             sendMsg(dataToSend, pSock);
+            break;
     }
     CDialogEx::OnTimer(nIDEvent);
 }

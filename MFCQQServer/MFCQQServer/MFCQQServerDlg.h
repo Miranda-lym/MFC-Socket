@@ -5,6 +5,7 @@
 #pragma once
 #include"ServerSocket.h"
 #include "../../MFCQQClient/MFCQQClient/MyMsg.h"
+#include "../../MFCQQClient/MFCQQClient/DB_Msg.hpp"
 #include"mysql.h"
 #include<map>
 
@@ -44,6 +45,7 @@ private:
     std::map<CString, CString> userInfoMap; //（用户名，密码）映射表
     std::map<CString, ServerSocket*> userSockMap;//(用户名，socket描述符)的映射表
     CString userList; //用户列表，包含所有用户名，用户登录时发送过去
+    DB_OfflineMsg* p_offlineMsg;
 // 实现
 protected:
     HICON m_hIcon;

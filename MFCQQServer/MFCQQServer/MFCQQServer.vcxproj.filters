@@ -39,6 +39,9 @@
     <ClInclude Include="..\..\MFCQQClient\MFCQQClient\MyMsg.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\MFCQQClient\MFCQQClient\DB_Msg.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MFCQQServer.cpp">

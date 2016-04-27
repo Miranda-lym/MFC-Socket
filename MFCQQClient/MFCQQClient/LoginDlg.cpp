@@ -129,6 +129,11 @@ void LoginDlg::OnBnClickedRegister()
 {
     ShowWindow(SW_HIDE);
     RegisterDlg regDlg(pMainDlg);
-    regDlg.DoModal();
+    if (regDlg.DoModal() == IDOK) {
+        userName = regDlg.userName;
+        pwd = regDlg.pwd;
+        UpdateData(FALSE);
+        OnBnClickedOk();
+    }
     ShowWindow(SW_SHOW);
 }

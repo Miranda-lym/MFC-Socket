@@ -7,9 +7,11 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <ctime>
 
 using std::string;
 using std::vector;
+using std::endl;
 
 class DB_Connector {
 protected:
@@ -87,34 +89,109 @@ protected:
 };
 
 inline DB_Msg::DB_Msg(const string& _tableName, const string& _logFileName)
+    :tbName(_tableName)
 {
-
+    if (_logFileName != "") {
+        fsLog.open(_logFileName, std::ios::app); //append,指可在原log文件后追加
+    } //若日志名为空字符串，即不想要日志文件，那么就不会调用open()，那么fsLog这个对象就是失效的（相当于false）
+    createTable();
 }
 inline DB_Msg::~DB_Msg()
 {
-
+    if (fsLog) { //文件流正常
+        fsLog.close();
+    }
 }
 
 inline void DB_Msg::push(const string & from, const string & to, const string & content)
 {
+    string sql = "insert into " + tbName + "(fromUser,toUser,msg) values('" + from + "','"
+        + to + "','" + content + "')";
+    if (fsLog) {
+        fsLog << getTime() << ">>>execute: " + sql << endl;
+    }
+    if (db_conn.query(sql) != 0 && fsLog) { //执行sql语句失败并且日志文件正常，则写日志（执行sql语句失败则返回非0）
+        fsLog << "Failed to insert: " << db_conn.error() << endl;
+    }
 }
 
 inline vector<vector<string>> DB_Msg::getResBySql(const string & sql)
 {
-    return vector<vector<string>>();
+    vector<vector<string>> result;
+    if (fsLog) {
+        fsLog << getTime() << ">>>execute: " + sql << endl;
+    }
+    if (db_conn.query(sql) == 0) { //执行成功则把结果输出
+        result = db_conn.getResult();
+    }
+    else if (fsLog) {
+        fsLog << "Failed to search: " << db_conn.error() << endl;
+    }
+    return result;
 }
 
 inline void DB_Msg::delResBySql(const string & sql)
 {
+    if (fsLog) {
+        fsLog << getTime() << ">>>execute: " << sql << endl;
+    }
+    if (db_conn.query(sql) != 0 && fsLog) { //查询失败并文件流正常
+        fsLog << "Failed to delete: " << db_conn.error() << endl;
+    }
 }
 
 inline string DB_Msg::getTime()
 {
-    return string();
+    char time_buf[64];
+    time_t now_time = time(NULL); //定义一个获取一个当前时间距1970年1月1日的秒数
+    strftime(time_buf, 64, "%Y-%m-%d %H:%M:%S", localtime(&now_time));
+    return time_buf;
 }
 
 inline void DB_Msg::createTable()
 {
+    db_conn.query("show tables like '" + tbName + "'");
+    auto res = db_conn.getResult(); //res是二维string类型的vector数组
+    if (res.size() > 0) {
+        return;
+    }
+    string sql= "CREATE TABLE `" + tbName + "` ("
+        "`id` tinyint(4) NOT NULL AUTO_INCREMENT,"
+        "`fromUser` varchar(20) NOT NULL,"
+        "`toUser` varchar(20) NOT NULL,"
+        "`time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+        "`msg` text NOT NULL,"
+        "PRIMARY KEY (`id`)"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+    if (fsLog) {
+        fsLog << getTime() << ">>>execute: " << sql << endl;
+    }
+    if (db_conn.query(sql) != 0 && fsLog) {
+        fsLog << "Failed to create: " << db_conn.error() << endl;
+    }
 }
+
+///离线消息管理类-仅用于服务器端
+class DB_OfflineMsg :public DB_Msg {
+public:
+    DB_OfflineMsg(const string& _tableName, const string _logFileName = "")
+        :DB_Msg(_tableName, _logFileName)
+    {}
+    //从离线消息的表中得到所有发送给user的消息，提取完之后从数据库删除
+    inline vector<vector<string>> pop(const string& user);
+};
+//从离线消息的表中得到所有发送给user的消息，提取完之后从数据库删除
+inline vector<vector<string>> DB_OfflineMsg::pop(const string& user) {
+    string sql = "select fromUser,time,msg from " + tbName + " where toUser='" + user + "'";
+    auto result = getResBySql(sql);
+    //找到了发给user的相关记录，则size()>0,则删除发给user的所有消息
+    if (result.size() > 0) {
+        sql = "delete from " + tbName + " where toUser='" + user + "'";
+        delResBySql(sql);
+    }
+    return result;
+}
+
+///
 
 #endif
