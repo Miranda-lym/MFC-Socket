@@ -116,11 +116,11 @@ BOOL LoginDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
 
-    userName = AfxGetApp()->GetProfileString("Login", "userName");
+    userName = AfxGetApp()->GetProfileString("Login", "userName"); //从注册表中获取login目录下的userName表项
     pwd = AfxGetApp()->GetProfileString("Login", "pwd");
     UpdateData(false);
-    GetDlgItem(IDC_USER_NAME)->SetFocus();
-    ((CEdit*)GetDlgItem(IDC_USER_NAME))->SetSel(0, -1); //->的优先级比强转类型的优先级高，所以要加括号，这里0指起始位置，-1指中止位置（因为不知道用户名会有多长）
+    GetDlgItem(IDC_USER_NAME)->SetFocus(); //设置焦点在userName编辑框上
+    ((CEdit*)GetDlgItem(IDC_USER_NAME))->SetSel(0, -1); //将用户名的内容全选，->的优先级比强转类型的优先级高，所以要加括号，这里0指起始位置，-1指中止位置（因为不知道用户名会有多长）
     return FALSE; 
 }
 

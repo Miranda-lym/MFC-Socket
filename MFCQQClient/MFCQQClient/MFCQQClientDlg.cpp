@@ -52,8 +52,8 @@ END_MESSAGE_MAP()
 
 
 
-CMFCQQClientDlg::CMFCQQClientDlg(CWnd* pParent /*=NULL*/)
-    : CDialogEx(IDD_MFCQQCLIENT_DIALOG, pParent)
+CMFCQQClientDlg::CMFCQQClientDlg()
+    : CMyDialog(IDD_MFCQQCLIENT_DIALOG)
     , login(this)
 {
     m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
@@ -74,12 +74,12 @@ void CMFCQQClientDlg::DoDataExchange(CDataExchange* pDX)
     CDialogEx::DoDataExchange(pDX);
     DDX_Control(pDX, IDC_msgTo, m_cbMsgTo);
 }
-
+//收到数据后的处理过程
 void CMFCQQClientDlg::receData()
 {
     char buffer[10000];
     if (pSock->Receive(buffer, sizeof(buffer)) != SOCKET_ERROR) {
-        msg.load(buffer);
+        msg.load(buffer); //解析数据
         if (msg.type == TYPE[UserList]) { //表示登录成功
             m_connected = true;
             m_cbMsgTo.ResetContent(); //清空下拉列表所有内容
@@ -150,6 +150,7 @@ void CMFCQQClientDlg::receData()
     }
 }
 
+//用指定sock发送消息
 int CMFCQQClientDlg::sendMsg(const CString & data, ClientSocket * sock)
 {
     if (sock->Send(data, data.GetLength() + 1) == SOCKET_ERROR) {
@@ -160,13 +161,14 @@ int CMFCQQClientDlg::sendMsg(const CString & data, ClientSocket * sock)
     return 0;
 }
 
+//更新接收区的显示内容
 void CMFCQQClientDlg::updateEvent(const CString & title, const CString & content, const CString setTime)
 {
     CString curData;
     GetDlgItemText(IDC_Rece, curData); //将空间IDC_Rece中的内容放到变量curData中
     bool haveDate = (curData == ""); //若此时接收区为空，则加上日期
     CString str = getDateTime(haveDate) + " ";
-    if (setTime != "-") {
+    if (setTime != "-") { //未使用默认值，即调用该函数时已经传入时间（如离线消息中就已经有时间了）
         str = setTime + " ";
     }
     if (content == "") {
@@ -183,13 +185,14 @@ void CMFCQQClientDlg::updateEvent(const CString & title, const CString & content
     pEvent->ReplaceSel(str); //替换所选那一行的内容，本来下一行是没有内容的
 }
 
+//修改状态栏
 void CMFCQQClientDlg::modifyStatus(const CString & status, bool _sleep)
 {
     HWND h = CreateStatusWindow(WS_CHILD | WS_VISIBLE, status, m_hWnd, 0);
-    if (_sleep) {
+    if (_sleep) { //让状态栏闪一下，吸引用户注意力
         Sleep(50);
     }
-    ::SendMessage(h, SB_SETBKCOLOR, 0, RGB(0, 125, 205)); //全局函数,则不会调用dlg类的成员函数，而是全局的成员函数
+    ::SendMessage(h, SB_SETBKCOLOR, 0, RGB(0, 125, 205)); //全局函数,则不会调用dlg类的成员函数，而是全局的成员函数，告诉状态栏要更新颜色
 }
 
 BEGIN_MESSAGE_MAP(CMFCQQClientDlg, CDialogEx)
@@ -205,6 +208,7 @@ END_MESSAGE_MAP()
 
 // CMFCQQClientDlg 消息处理程序
 
+//DoModal()负责初始化、创建、销毁窗口（在MFCQQClient.cpp中），OnInitDialog()只是其中的子操作而已
 BOOL CMFCQQClientDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
@@ -283,7 +287,7 @@ HCURSOR CMFCQQClientDlg::OnQueryDragIcon()
     return static_cast<HCURSOR>(m_hIcon);
 }
 
-
+//显示登录界面（用在当前用户被强制注销或主动注销时）
 void CMFCQQClientDlg::showLoginDlg()
 {
     SetDlgItemText(IDC_Rece, ""); //未绑定变量，所以通过控件的ID来清空内容
@@ -298,6 +302,7 @@ void CMFCQQClientDlg::showLoginDlg()
     SetWindowText("客户端 - " + userName);
 }
 
+//返回当前日期或时间
 CString CMFCQQClientDlg::getDateTime(bool haveDate)
 {
     if (haveDate) {
@@ -308,7 +313,7 @@ CString CMFCQQClientDlg::getDateTime(bool haveDate)
     }
 }
 
-
+//注销按钮的响应函数
 void CMFCQQClientDlg::OnBnClickedLogout()
 {
     KillTimer(1); //即将注销，所以此时关闭心跳包的发送，否则将会导致3秒内崩溃
@@ -320,7 +325,7 @@ void CMFCQQClientDlg::OnBnClickedLogout()
     showLoginDlg();
 }
 
-
+//发送消息按钮的响应函数
 void CMFCQQClientDlg::OnBnClickedSendMessage()
 {
     if (m_connected) {
@@ -343,13 +348,13 @@ void CMFCQQClientDlg::OnBnClickedSendMessage()
     }
 }
 
-
+//“确定”按钮的响应函数（将本来的 销毁工作改为了 按enter则自动响应OnOk的功能）
 void CMFCQQClientDlg::OnOK()
 {
     OnBnClickedSendMessage();
 }
 
-
+//每个定时器的功能设定
 void CMFCQQClientDlg::OnTimer(UINT_PTR nIDEvent)
 {
     // TODO: 在此添加消息处理程序代码和/或调用默认值
@@ -367,7 +372,7 @@ void CMFCQQClientDlg::OnTimer(UINT_PTR nIDEvent)
     CDialogEx::OnTimer(nIDEvent);
 }
 
-
+//在下拉框被改选时的响应函数
 void CMFCQQClientDlg::OnSelChangeMsgTo()
 {
     CString who; //选定userList中的哪个用户
@@ -377,7 +382,7 @@ void CMFCQQClientDlg::OnSelChangeMsgTo()
     sendMsg(dataToSend, pSock);
 }
 
-
+//消息预处理函数，这里主要处理发送框中按了enter或ctrl+enter按键时的响应函数
 BOOL CMFCQQClientDlg::PreTranslateMessage(MSG* pMsg)
 {
     int cont_ID = GetWindowLong(pMsg->hwnd, GWL_ID); //获取响应控件消息的ID

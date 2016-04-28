@@ -13,6 +13,7 @@ using std::string;
 using std::vector;
 using std::endl;
 
+//数据库连接器类
 class DB_Connector {
 protected:
     MYSQL* mysql; //mysql连接的句柄
@@ -26,6 +27,7 @@ public:
     inline vector<vector<string>> getResult();
 };
 
+//构造函数中自动完成连接数据库功能
 inline DB_Connector::DB_Connector()
 {
     mysql = mysql_init(NULL);
@@ -41,16 +43,19 @@ inline DB_Connector::~DB_Connector()
     mysql_close(mysql); //关闭mysql连接
 }
 
+//查询数据库
 inline int DB_Connector::query(const string & sql)
 {
     return mysql_query(mysql, sql.c_str()); //执行sql语句，成功则返回0，失败则返回非0
 }
 
+//返回数据库的所有错误提示（如连接、查询、删除、修改等错误）
 inline string DB_Connector::error()
 {
     return mysql_error(mysql); //返回上一次的错误提示
 }
 
+//得到查询后的结果集（是个二维数组）
 inline vector<vector<string>> DB_Connector::getResult()
 {
     vector<vector<string>>result;
@@ -62,7 +67,7 @@ inline vector<vector<string>> DB_Connector::getResult()
             result[cur][i] = row[i];
         }
     }
-    mysql_free_result(res);
+    mysql_free_result(res); //释放结果集，store()后必须free_result()
     return result;
 }
 
@@ -155,7 +160,7 @@ inline void DB_Msg::createTable()
     if (res.size() > 0) {
         return;
     }
-    string sql= "CREATE TABLE `" + tbName + "` ("
+    string sql = "CREATE TABLE `" + tbName + "` ("
         "`id` tinyint(4) NOT NULL AUTO_INCREMENT,"
         "`fromUser` varchar(20) NOT NULL,"
         "`toUser` varchar(20) NOT NULL,"
@@ -175,7 +180,7 @@ inline void DB_Msg::createTable()
 class DB_OfflineMsg :public DB_Msg {
 public:
     DB_OfflineMsg(const string& _tableName, const string _logFileName = "")
-        :DB_Msg(_tableName, _logFileName)
+        : DB_Msg(_tableName, _logFileName)
     {}
     //从离线消息的表中得到所有发送给user的消息，提取完之后从数据库删除
     inline vector<vector<string>> pop(const string& user);

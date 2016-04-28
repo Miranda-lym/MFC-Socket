@@ -1,13 +1,13 @@
 #pragma once
 #include "afxsock.h"
 
-class CMFCQQClientDlg;
+class CMyDialog;
 class ClientSocket :
     public CSocket
 {
-    CMFCQQClientDlg* pDlg;
+    CMyDialog* pDlg;
 public:
-    ClientSocket(CMFCQQClientDlg* _pDlg);
+    ClientSocket(CMyDialog* _pDlg);
     static CString getLastErrorStr();
     virtual void OnReceive(int nErrorCode);
 };

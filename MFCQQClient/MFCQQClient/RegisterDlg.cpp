@@ -15,7 +15,7 @@ IMPLEMENT_DYNAMIC(RegisterDlg, CDialogEx)
 
 RegisterDlg::RegisterDlg(CMFCQQClientDlg * _pMainDlg)
     : pMainDlg(_pMainDlg)
-    , CDialogEx(IDD_Register)
+    , CMyDialog(IDD_Register)
     , pwd(_T(""))
     , pwd2(_T(""))
     , userName(_T(""))
@@ -25,6 +25,22 @@ RegisterDlg::RegisterDlg(CMFCQQClientDlg * _pMainDlg)
 
 RegisterDlg::~RegisterDlg()
 {
+    delete sock;
+}
+
+void RegisterDlg::receData()
+{
+    char buffer[3];
+    if (sock->Receive(buffer, sizeof(buffer)) != SOCKET_ERROR) {
+        sock->Close();
+        if (buffer[0] == '0') {
+            MessageBox(" 注册失败,该用户名已存在，请更换用户名再重试！", "温馨提示",MB_ICONERROR);
+        }
+        else if (buffer[0] == '1') {
+            MessageBox(" 注册成功，即将进入登录界面", "恭喜你");
+            CDialogEx::OnOK();
+        }
+    }
 }
 
 void RegisterDlg::DoDataExchange(CDataExchange* pDX)
@@ -69,13 +85,12 @@ void RegisterDlg::OnBnClickedOk()
         GetDlgItem(IDC_PWD2)->SetFocus();
         return;
     }
-    ClientSocket sock(0);
 
-    if (!sock.Create()) {
+    if (!sock->Create()) {
         MessageBox("创建套接字失败！", "温馨提示", MB_ICONERROR);
         return;
     }
-    if (!sock.Connect("127.0.0.1", 22783)) {
+    if (!sock->Connect("127.0.0.1", 22783)) {
         CString str;
         str.Format("错误代码：%d", GetLastError());
         MessageBox("连接服务器失败！" + str, "提示", MB_ICONERROR);
@@ -83,10 +98,7 @@ void RegisterDlg::OnBnClickedOk()
     }
     MyMsg msg;
     CString dataToSend = msg.join("", TYPE[Register], userName, "", "", pwd);
-    pMainDlg->sendMsg(dataToSend, &sock);
-    MessageBox("注册信息已发送，审核通过后即可进行登录！", "温馨提示");
-    sock.Close();
-    CDialogEx::OnOK();
+    pMainDlg->sendMsg(dataToSend, sock);
 }
 
 
@@ -96,6 +108,7 @@ BOOL RegisterDlg::OnInitDialog()
 
     // TODO:  在此添加额外的初始化
     GetDlgItem(IDC_UserName)->SetFocus();
+    sock = new ClientSocket(this);
 
     return FALSE;  
 }

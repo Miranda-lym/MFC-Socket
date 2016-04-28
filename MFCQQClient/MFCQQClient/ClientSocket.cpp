@@ -2,7 +2,7 @@
 #include "ClientSocket.h"
 #include "MFCQQClientDlg.h"
 
-ClientSocket::ClientSocket(CMFCQQClientDlg* _pDlg)
+ClientSocket::ClientSocket(CMyDialog* _pDlg)
 {
     pDlg = _pDlg;
 }
@@ -19,7 +19,7 @@ CString ClientSocket::getLastErrorStr()
     return errStr;
 }
 
-
+//当接受缓冲区有消息时，自动响应
 void ClientSocket::OnReceive(int nErrorCode)
 {
     pDlg->receData();

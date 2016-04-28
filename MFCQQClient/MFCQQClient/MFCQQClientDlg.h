@@ -7,9 +7,13 @@
 #include "MyMsg.h"
 #include "LoginDlg.h"
 #include "afxwin.h"
-
+class CMyDialog :public CDialogEx {
+public:
+    CMyDialog(UINT nIDTemplate) :CDialogEx(nIDTemplate) {}
+    virtual void receData() = 0;
+};
 // CMFCQQClientDlg 对话框
-class CMFCQQClientDlg : public CDialogEx
+class CMFCQQClientDlg : public CMyDialog
 {
     ClientSocket* pSock;
     bool m_connected; //标记是否已连接
@@ -19,7 +23,7 @@ class CMFCQQClientDlg : public CDialogEx
     LoginDlg login;
 // 构造
 public:
-	CMFCQQClientDlg(CWnd* pParent = NULL);	// 标准构造函数
+	CMFCQQClientDlg();	// 标准构造函数
     ~CMFCQQClientDlg();
 // 对话框数据
 #ifdef AFX_DESIGN_TIME

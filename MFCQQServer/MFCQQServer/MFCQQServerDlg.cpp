@@ -171,8 +171,9 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
         }
         else if (msg.type == TYPE[Register]) {
             if (userInfoMap.find(msg.userId) == userInfoMap.end()) {
+                sendMsg("1", sock);
                 CString str = "insert into userinfo(userName,passwd) values('" + msg.userId + "','" + msg.pw + "')";
-                mysql_query(conn, str);
+                pDB_UserInfo->query(str.GetBuffer());
                 userInfoMap[msg.userId] = msg.pw; //在map中新增一项，将该用户名和密码对存入map中
                 userList += msg.userId + ";"; //在用户列表中新增一条用户名
                 for (auto &elem : userSockMap) {
@@ -182,6 +183,7 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                 updateEvent("", msg.userId + "已注册");
             }
             else {
+                sendMsg("0", sock);
                 updateEvent("", msg.userId + "尝试注册，但该用户已存在");
             }
         }
@@ -410,25 +412,18 @@ void CMFCQQServerDlg::OnTimer(UINT_PTR nIDEvent)
     switch (nIDEvent) {
         case 0:
             KillTimer(0);
-            conn = mysql_init(0);
-            if (mysql_real_connect(conn, "localhost", "root", "123456", "test", 0, 0, 0) != 0) {
-                mysql_query(conn, "set names 'GBK'");
-                if (mysql_query(conn, "select userName,passwd from UserInfo") == 0) {
-                    MYSQL_RES *res = mysql_store_result(conn);
-                    MYSQL_ROW row;
-                    userList = "";
-                    while ((row = mysql_fetch_row(res)) != NULL) {
-                        userInfoMap[row[0]] = row[1];
-                        userList += row[0] + (CString)";";
-                    }
-                    mysql_free_result(res);
+            try {
+                pDB_UserInfo = new DB_Connector();
+                pDB_UserInfo->query("select userName,passwd from UserInfo");
+                auto res = pDB_UserInfo->getResult();
+                userList = "";
+                for (auto& it : res) {
+                    userInfoMap[it[0].c_str()] = it[1].c_str();
+                    userList += (it[0] + ";").c_str();
                 }
-                else
-                    MessageBox(mysql_error(conn), "Error on MySQL:", MB_ICONERROR);
-            }
-            else {
-                MessageBox(mysql_error(conn), "Error on MySQL:", MB_ICONERROR);
-                exit(1);
+            } catch(std::logic_error& e){
+                MessageBox(e.what());
+                exit(-1);
             }
             p_offlineMsg = new DB_OfflineMsg("offline_msg", "offline_msg.log");
             break;
