@@ -197,6 +197,69 @@ inline vector<vector<string>> DB_OfflineMsg::pop(const string& user) {
     return result;
 }
 
-///
+///聊天记录消息管理类
+class DB_ChatLogMsg : public DB_Msg {
+public:
+    //用户名标识用户，日志文件名为空时不建立，_prefix用于区分是在客户端还是在服务器端
+    inline DB_ChatLogMsg(const string& _userName, const string _logFileName = "",
+                         const string _prefix = "") :DB_Msg(_prefix + "chat_log_" + _userName, _logFileName), userName(_userName) {}
+    //添加聊天记录消息
+    inline void push(const string& userOthers, const string& msg, bool isReceived = 1);
+    //添加收到的带时间记录的离线消息
+    inline void pushOffline(const string&from, const string& msg, const string&_time);
+    //获取user发来的消息或者发给user的所有消息
+    inline vector<vector<string>> get(const string& user);
+    //在该用户的聊天记录中查找与 withuser 的包含str(查找消息的关键字)的消息记录
+    //“*”作为默认值在实现中用来判断，若为“*”则代表匹配（查找）全部记录
+    inline vector<vector<string>> find(const string& str, const string withUser = "*"); 
+    //根据传递的用户名删除 本用户与用户user的聊天记录，传入“*”则删除所有记录
+    inline void remove(const string& user);
+    //获取与当前用户有聊天记录的用户列表
+    inline vector<string> getUserWithChatLog();
+    //获取当前用户的用户名
+    inline const string& getUserName();
+protected:
+    string userName; //该用户的用户名
+};
+
+
+//添加聊天记录消息
+inline void DB_ChatLogMsg::push(const string& userOthers, const string& msg, bool isReceived)
+{
+    if(isReceived){ //收到消息
+        DB_Msg::push(userOthers, userName, msg); //继承时覆盖了父类的push函数，所以要加作用域
+    }
+    else {
+        DB_Msg::push(userName, userOthers, msg);
+    }
+}
+
+inline void DB_ChatLogMsg::pushOffline(const string & from, const string & msg, const string & _time)
+{
+}
+
+inline vector<vector<string>> DB_ChatLogMsg::get(const string & user)
+{
+    return vector<vector<string>>();
+}
+
+inline vector<vector<string>> DB_ChatLogMsg::find(const string & str, const string withUser)
+{
+    return vector<vector<string>>();
+}
+
+inline void DB_ChatLogMsg::remove(const string & user)
+{
+}
+
+inline vector<string> DB_ChatLogMsg::getUserWithChatLog()
+{
+    return vector<string>();
+}
+
+inline const string & DB_ChatLogMsg::getUserName()
+{
+    // TODO: 在此处插入 return 语句
+}
 
 #endif

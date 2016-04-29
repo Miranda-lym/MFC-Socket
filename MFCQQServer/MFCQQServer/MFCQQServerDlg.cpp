@@ -77,11 +77,11 @@ CMFCQQServerDlg::CMFCQQServerDlg(CWnd* pParent /*=NULL*/)
 CMFCQQServerDlg::~CMFCQQServerDlg() {
     for (auto & elem : userSockMap) {
         CString dataToSend = msg.join("", TYPE[Server_is_closed], elem.first);
-        sendMsg(dataToSend, elem.second);
+        sendMsg(dataToSend, elem.second.sock);
     }
     for (auto &elem : userSockMap) {
-        elem.second->Close();
-        delete elem.second;
+        elem.second.sock->Close();
+        delete elem.second.sock;
     }
 }
 
@@ -108,7 +108,7 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                 if (userSockMap.find(msg.userId) == userSockMap.end()) { //说明此时还未保存该用户的socket描述符，可以正常登录
                     CString dataToSend = msg.join(userList, TYPE[UserList], msg.userId);
                     sendMsg(dataToSend, sock);
-                    userSockMap[msg.userId] = sock;
+                    userSockMap[msg.userId] = { sock,1 };
                     updateEvent(msg.userId + "已上线", "");
                     ++m_onlineNum;
                     auto res = p_offlineMsg->pop(msg.userId.GetBuffer()); //GetBuffer是CString类的成员函数，c_str()是string类的成员函数，pop(),取出并删除消息
@@ -128,10 +128,10 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                     CString dataToSend = msg.join(userList, TYPE[UserList], msg.userId);
                     sendMsg(dataToSend, sock);
                     dataToSend = msg.join("", TYPE[Squezze], msg.userId);
-                    sendMsg(dataToSend, userSockMap[msg.userId]);
-                    userSockMap[msg.userId]->Close();
-                    delete userSockMap[msg.userId];
-                    userSockMap[msg.userId] = sock;
+                    sendMsg(dataToSend, userSockMap[msg.userId].sock);
+                    userSockMap[msg.userId].sock->Close();
+                    delete userSockMap[msg.userId].sock;
+                    userSockMap[msg.userId] = { sock,1 };
                     updateEvent(msg.userId + "已在另一处登录", "");
                 }
             }
@@ -143,8 +143,8 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
         else if (msg.type == TYPE[Logout]) {
             auto it = userSockMap.find(msg.userId);
             if (it != userSockMap.end()) {
-                userSockMap[msg.userId]->Close();
-                delete userSockMap[msg.userId];
+                userSockMap[msg.userId].sock->Close();
+                delete userSockMap[msg.userId].sock;
                 userSockMap.erase(it);
                 updateEvent(msg.userId + "已下线", "");
                 --m_onlineNum;
@@ -158,12 +158,12 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                 auto it = userSockMap.find(msg.toUser);
                 if (it != userSockMap.end()) {
                     CString dataToSend = msg.join(msg.data, TYPE[ChatMsg], msg.toUser, msg.userId); //发送的内容 消息类型 消息发给谁 发送者是谁
-                    sendMsg(dataToSend, userSockMap[msg.toUser]);
+                    sendMsg(dataToSend, userSockMap[msg.toUser].sock);
                     updateEvent(msg.userId + "给" + msg.toUser, msg.data);
                 }
                 else {
                     CString dataToSend = msg.join(msg.toUser + "不在线,已转为离线消息", TYPE[ChatMsg], msg.userId, "服务器");
-                    sendMsg(dataToSend, userSockMap[msg.userId]);
+                    sendMsg(dataToSend, userSockMap[msg.userId].sock);
                     updateEvent(msg.userId + "给" + msg.toUser, msg.data + "（离线消息）");
                     p_offlineMsg->push(msg.userId.GetBuffer(), msg.toUser.GetBuffer(), msg.data.GetBuffer());
                 }
@@ -178,7 +178,7 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                 userList += msg.userId + ";"; //在用户列表中新增一条用户名
                 for (auto &elem : userSockMap) {
                     CString dataToSend = msg.join(msg.userId, TYPE[AddUserList], elem.first); //格式：消息内容 消息类型 谁能收到（这里针对服务器端来说，就是谁能收到，如果是针对客户端，即谁在发送）从哪里来 去哪里 密码是
-                    sendMsg(dataToSend, elem.second);
+                    sendMsg(dataToSend, elem.second.sock);
                 }
                 updateEvent("", msg.userId + "已注册");
             }
@@ -190,14 +190,15 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
         else if (msg.type == TYPE[OnlineState]) {
             if (userSockMap.find(msg.data) != userSockMap.end()) {
                 CString dataToSend = msg.join("1", TYPE[OnlineState], msg.userId);
-                sendMsg(dataToSend, userSockMap[msg.userId]);
+                sendMsg(dataToSend, userSockMap[msg.userId].sock);
             }
             else {
                 CString dataToSend = msg.join("0", TYPE[OnlineState], msg.userId);
-                sendMsg(dataToSend, userSockMap[msg.userId]);
+                sendMsg(dataToSend, userSockMap[msg.userId].sock);
             }
         }
         else if (msg.type == TYPE[I_am_online]) {
+            userSockMap[msg.userId].heartbeat = 1;
             //每3秒收到一个I_am_online消息，从而不会实现那个socket优化功能（即用户一段时间不发消息，则服务器自动断开与其的连接） 
         }
         else {
@@ -303,13 +304,12 @@ BOOL CMFCQQServerDlg::OnInitDialog()
     // TODO: 在此添加额外的初始化代码
     if (!findProcessByName("mysqld.exe")) {
         ShellExecute(0, "open", "mysqld", 0, 0, SW_HIDE);
-        SetTimer(0, 2000, NULL);
+        SetTimer(0, 300, NULL);
     }
     else {
         SetTimer(0, 1, NULL);
     }
     OnBnClickedOpenserver();
-    modifyStatus("服务器已开启", 0);
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -400,7 +400,7 @@ void CMFCQQServerDlg::OnBnClickedSendMsg()
     }
     for (auto &elem : userSockMap) {
         CString dataToSend = msg.join(sendData, TYPE[ChatMsg], elem.first, "服务器"); //发送内容 消息类型 谁会收到
-        sendMsg(dataToSend, elem.second);
+        sendMsg(dataToSend, elem.second.sock);
     }
     updateEvent("服务器", sendData); //更新接收区
     SetDlgItemText(IDC_SendData, "");
@@ -412,20 +412,41 @@ void CMFCQQServerDlg::OnTimer(UINT_PTR nIDEvent)
     switch (nIDEvent) {
         case 0:
             KillTimer(0);
-            try {
-                pDB_UserInfo = new DB_Connector();
-                pDB_UserInfo->query("select userName,passwd from UserInfo");
-                auto res = pDB_UserInfo->getResult();
-                userList = "";
-                for (auto& it : res) {
-                    userInfoMap[it[0].c_str()] = it[1].c_str();
-                    userList += (it[0] + ";").c_str();
+            modifyStatus("服务器已开启，等待连接到mysql服务器", 0);
+            for (int i = 0; ; ++i) {
+                try {
+                    pDB_UserInfo = new DB_Connector();
+                    pDB_UserInfo->query("select userName,passwd from UserInfo");
+                    auto res = pDB_UserInfo->getResult();
+                    userList = "";
+                    for (auto& it : res) {
+                        userInfoMap[it[0].c_str()] = it[1].c_str();
+                        userList += (it[0] + ";").c_str();
+                    }
+                    break;
+                } catch (std::logic_error& e) {
+                    if (i > 15) {
+                        MessageBox(e.what());
+                        exit(-1);
+                    }
+                    Sleep(300);
                 }
-            } catch(std::logic_error& e){
-                MessageBox(e.what());
-                exit(-1);
             }
             p_offlineMsg = new DB_OfflineMsg("offline_msg", "offline_msg.log");
+            SetTimer(1, 2200, NULL);
+            modifyStatus("服务器已开启！", 0);
+            break;
+        case 1:
+            for (auto& elem : userSockMap) {
+                if (!elem.second.heartbeat) { //表示该用户一段时间内未发送心跳包
+                    userSockMap[msg.userId].sock->Close();
+                    delete userSockMap[msg.userId].sock;
+                    userSockMap.erase(userSockMap.find(msg.userId));
+                    updateEvent(msg.userId + "异常下线", "");
+                    --m_onlineNum;
+                    UpdateData(FALSE);
+                }
+            }
             break;
     }
 

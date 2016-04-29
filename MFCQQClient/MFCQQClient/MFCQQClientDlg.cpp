@@ -12,6 +12,10 @@
 #define new DEBUG_NEW
 #endif
 
+string DB_Connector::host_ = "localhost";
+string DB_Connector::user_ = "root";
+string DB_Connector::passwd_ = "123456";
+string DB_Connector::db_ = "mfc_qq_client";
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
@@ -55,6 +59,7 @@ END_MESSAGE_MAP()
 CMFCQQClientDlg::CMFCQQClientDlg()
     : CMyDialog(IDD_MFCQQCLIENT_DIALOG)
     , login(this)
+    ,pDB_Chatlog(NULL)
 {
     m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
     pSock = NULL;
@@ -99,6 +104,7 @@ void CMFCQQClientDlg::receData()
         }
         else if (msg.type == TYPE[ChatMsg]) {
             updateEvent(msg.fromUser, msg.data);
+            pDB_Chatlog->push(msg.fromUser.GetBuffer(), msg.data.GetBuffer());
         }
         else if (msg.type == TYPE[AddUserList]) {
             m_cbMsgTo.AddString(msg.data); //增加一条用户信息
@@ -300,6 +306,8 @@ void CMFCQQClientDlg::showLoginDlg()
     userName = login.userName;
     pwd = login.pwd;
     SetWindowText("客户端 - " + userName);
+    delete pDB_Chatlog;
+    pDB_Chatlog = new DB_ChatLogMsg(userName.GetBuffer(), ("chat_log." + userName + ".log").GetBuffer(), "c_");
 }
 
 //返回当前日期或时间
@@ -341,6 +349,7 @@ void CMFCQQClientDlg::OnBnClickedSendMessage()
         if (sendMsg(dataToSend, pSock) != SOCKET_ERROR) {
             updateEvent("我", send);
             SetDlgItemText(IDC_Send, "");
+            pDB_Chatlog->push(toUser.GetBuffer(), send.GetBuffer(), false);
         }
     }
     else {

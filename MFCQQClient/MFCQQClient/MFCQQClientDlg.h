@@ -7,6 +7,8 @@
 #include "MyMsg.h"
 #include "LoginDlg.h"
 #include "afxwin.h"
+#include "DB_Msg.hpp"
+
 class CMyDialog :public CDialogEx {
 public:
     CMyDialog(UINT nIDTemplate) :CDialogEx(nIDTemplate) {}
@@ -21,6 +23,7 @@ class CMFCQQClientDlg : public CMyDialog
     CString userName;
     CString pwd;
     LoginDlg login;
+    DB_ChatLogMsg* pDB_Chatlog;
 // 构造
 public:
 	CMFCQQClientDlg();	// 标准构造函数
