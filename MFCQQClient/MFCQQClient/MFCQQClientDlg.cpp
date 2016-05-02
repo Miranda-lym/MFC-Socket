@@ -72,6 +72,7 @@ CMFCQQClientDlg::~CMFCQQClientDlg()
     sendMsg(dataToSend, pSock);
     pSock->Close();
     delete pSock;
+    delete pDB_Chatlog;
 }
 
 void CMFCQQClientDlg::DoDataExchange(CDataExchange* pDX)
@@ -97,7 +98,7 @@ void CMFCQQClientDlg::receData()
             }
             m_cbMsgTo.SetCurSel(0);
             modifyStatus("已连上服务器");
-            SetTimer(1, 3000, NULL); // 设置心跳包
+            SetTimer(1, 1000, NULL); // 设置心跳包
         }
         else if (msg.type == TYPE[LoginFail]) {
             login.loginFail = true;
@@ -144,8 +145,12 @@ void CMFCQQClientDlg::receData()
                 _content = msg.data.Left(i);
                 msg.data = MyMsg::rightN(msg.data, i + 2);
                 updateEvent(_from, _content, _time);
+                pDB_Chatlog->pushOffline(_from.GetBuffer(), _content.GetBuffer(), _time.GetBuffer());
             }
             updateEvent("—————以上是离线消息—————", "", "");
+        }
+        else if (msg.type == TYPE[Status]) {
+            modifyStatus(msg.data);
         }
         else {
             updateEvent("未知消息", buffer);

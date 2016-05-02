@@ -60,6 +60,9 @@ inline vector<vector<string>> DB_Connector::getResult()
 {
     vector<vector<string>>result;
     MYSQL_RES* res = mysql_store_result(mysql); //分配内存存放query()查找后结果集
+    if (res == NULL) {
+        return result;
+    }
     unsigned num = mysql_num_fields(res); //结果集的列数
     for (MYSQL_ROW row; (row = mysql_fetch_row(res)) != NULL;) {
         result.push_back(vector<string>(num)); //预存一行空的，在下面一句中将给该行赋值
@@ -236,6 +239,13 @@ inline void DB_ChatLogMsg::push(const string& userOthers, const string& msg, boo
 
 inline void DB_ChatLogMsg::pushOffline(const string & from, const string & msg, const string & _time)
 {
+    string sql = "insert into " + tbName + "(fromUser,toUser,time,msg) values ('" + from + "','" + userName + "','" + _time + "','" + msg + "')";
+    if (fsLog) {
+        fsLog << getTime() << ">>>execute: " + sql << endl;
+    }
+    if (db_conn.query(sql) != 0 && fsLog) {
+        fsLog << "Failed to insert:" << db_conn.error() << endl;
+    }
 }
 
 inline vector<vector<string>> DB_ChatLogMsg::get(const string & user)

@@ -162,7 +162,7 @@ void CMFCQQServerDlg::receData(ServerSocket* sock)
                     updateEvent(msg.userId + "给" + msg.toUser, msg.data);
                 }
                 else {
-                    CString dataToSend = msg.join(msg.toUser + "不在线,已转为离线消息", TYPE[ChatMsg], msg.userId, "服务器");
+                    CString dataToSend = msg.join(msg.toUser + "不在线,已转为离线消息", TYPE[Status], msg.userId, "服务器");
                     sendMsg(dataToSend, userSockMap[msg.userId].sock);
                     updateEvent(msg.userId + "给" + msg.toUser, msg.data + "（离线消息）");
                     p_offlineMsg->push(msg.userId.GetBuffer(), msg.toUser.GetBuffer(), msg.data.GetBuffer());
@@ -416,12 +416,24 @@ void CMFCQQServerDlg::OnTimer(UINT_PTR nIDEvent)
             for (int i = 0; ; ++i) {
                 try {
                     pDB_UserInfo = new DB_Connector();
-                    pDB_UserInfo->query("select userName,passwd from UserInfo");
-                    auto res = pDB_UserInfo->getResult();
-                    userList = "";
-                    for (auto& it : res) {
-                        userInfoMap[it[0].c_str()] = it[1].c_str();
-                        userList += (it[0] + ";").c_str();
+                    pDB_UserInfo->query("show tables like 'UserInfo'");
+                    if (pDB_UserInfo->getResult().size() == 0) { //当用户表不存在时
+                        string sql = " CREATE TABLE `UserInfo` ("
+                            "  `id` int(11) NOT NULL AUTO_INCREMENT  PRIMARY KEY,"
+                            "  `userName` varchar(17) NOT NULL UNIQUE,"
+                            "  `passwd` varchar(17) NOT NULL,"
+                            "  `type` tinyint(4) DEFAULT '0'"
+                            " ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;";
+                        pDB_UserInfo->query(sql); //创建表
+                    }
+                    else {
+                        pDB_UserInfo->query("select userName,passwd from UserInfo");
+                        auto res = pDB_UserInfo->getResult();
+                        userList = "";
+                        for (auto& it : res) {
+                            userInfoMap[it[0].c_str()] = it[1].c_str();
+                            userList += (it[0] + ";").c_str();
+                        }
                     }
                     break;
                 } catch (std::logic_error& e) {
@@ -437,14 +449,18 @@ void CMFCQQServerDlg::OnTimer(UINT_PTR nIDEvent)
             modifyStatus("服务器已开启！", 0);
             break;
         case 1:
-            for (auto& elem : userSockMap) {
-                if (!elem.second.heartbeat) { //表示该用户一段时间内未发送心跳包
-                    userSockMap[msg.userId].sock->Close();
-                    delete userSockMap[msg.userId].sock;
-                    userSockMap.erase(userSockMap.find(msg.userId));
-                    updateEvent(msg.userId + "异常下线", "");
+            for (auto it = userSockMap.begin(); it != userSockMap.end();) {
+                auto itTemp = it++;
+                if (!itTemp->second.heartbeat) { //表示该用户一段时间内未发送心跳包
+                    updateEvent(itTemp->first + "异常下线", "");
                     --m_onlineNum;
                     UpdateData(FALSE);
+                    itTemp->second.sock->Close();
+                    delete itTemp->second.sock;
+                    userSockMap.erase(itTemp);
+                }
+                else {
+                    itTemp->second.heartbeat = 0;
                 }
             }
             break;

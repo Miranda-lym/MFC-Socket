@@ -14,7 +14,8 @@
 
 IMPLEMENT_DYNAMIC(LoginDlg, CDialogEx)
 
-
+CString LoginDlg::serverIP = "127.0.0.1";
+unsigned LoginDlg::serverPort = 22783;
 
 LoginDlg::LoginDlg(CMFCQQClientDlg * _pMainDlg)
     :pMainDlg(_pMainDlg), CDialogEx(IDD_DIALOG1)
@@ -22,6 +23,10 @@ LoginDlg::LoginDlg(CMFCQQClientDlg * _pMainDlg)
     , pwd(_T(""))
 {
     timeOut = 0;//默认是没有超时的
+    char cIP[20];
+    GetPrivateProfileString("ClientConfig", "serverIP", serverIP, cIP, 20, ".\\config.ini");
+    serverIP = cIP;
+    serverPort = GetPrivateProfileInt("ClientConfig", "serverPort", serverPort, ".\\config.ini");
 }
 
 LoginDlg::~LoginDlg()
@@ -65,7 +70,7 @@ void LoginDlg::OnBnClickedOk()
         MessageBox("创建套接字失败！", "温馨提示", MB_ICONERROR);
         return;
     }
-    if (!pMainDlg->pSock->Connect("127.0.0.1", 22783)) {
+    if (!pMainDlg->pSock->Connect(serverIP, serverPort)) {
         MessageBox("连接服务器失败！" + ClientSocket::getLastErrorStr(), "提示", MB_ICONERROR);
         return;
     }

@@ -90,7 +90,7 @@ void RegisterDlg::OnBnClickedOk()
         MessageBox("创建套接字失败！", "温馨提示", MB_ICONERROR);
         return;
     }
-    if (!sock->Connect("127.0.0.1", 22783)) {
+    if (!sock->Connect(LoginDlg::serverIP, LoginDlg::serverPort)) {
         CString str;
         str.Format("错误代码：%d", GetLastError());
         MessageBox("连接服务器失败！" + str, "提示", MB_ICONERROR);

@@ -22,12 +22,15 @@ protected:
 
 	DECLARE_MESSAGE_MAP()
 public:
-    afx_msg void OnBnClickedOk();
     CString userName;
     CString pwd;
     bool timeOut;
     bool loginFail;
     CMFCQQClientDlg* pMainDlg;
+    static CString serverIP; //服务器的ip地址
+    static unsigned serverPort; //服务器的端口号
+    
+    afx_msg void OnBnClickedOk();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
     virtual BOOL OnInitDialog();
     afx_msg void OnBnClickedRegister();
